@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HB 烘焙软件 · UI 重构全量预览 v2.0</title>
+<style>
+:root{
+  --bg:#101412; --bg2:#141816; --panel:#1a211d; --panel2:#111613; --card:#171d1a;
+  --text:#f4f1e8; --muted:#9daea3; --line:#2e3b33; --line2:#26342b;
+  --accent:#f3bd67; --accent2:#a75c16; --green:#4f9d6e; --red:#c45a42; --blue:#4fa3d9;
+  --bt:#f3c969; --it:#4fa3d9; --et:#e58e45; --ror:#c487d8; --pred:#e76f51;
+  --tag-bg:rgba(243,189,103,.12); --tag-fg:#f3bd67;
+}
+html[data-theme="light"]{
+  --bg:#f2f3f0; --bg2:#eceee9; --panel:#ffffff; --panel2:#f7f8f5; --card:#ffffff;
+  --text:#243029; --muted:#69766d; --line:#dde2db; --line2:#e5e9e2;
+  --tag-bg:rgba(167,92,22,.1); --tag-fg:#a75c16;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;font-size:14px;display:flex;min-height:100vh}
+a{color:var(--blue)}
+
+/* ---------- 左侧导航 ---------- */
+#nav{width:236px;min-width:236px;background:var(--bg2);border-right:1px solid var(--line2);padding:16px 0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+#nav .logo{padding:6px 18px 14px;border-bottom:1px solid var(--line2);margin-bottom:10px}
+#nav .logo b{font-size:17px;letter-spacing:1px}
+#nav .logo small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+#nav .grp{padding:10px 18px 4px;font-size:11px;color:var(--muted);letter-spacing:2px}
+#nav button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);padding:8px 18px;font-size:13.5px;cursor:pointer;border-left:3px solid transparent;font-family:inherit}
+#nav button:hover{background:rgba(243,189,103,.07)}
+#nav button.on{background:var(--panel);border-left-color:var(--accent);color:var(--accent);font-weight:700}
+#nav .foot{margin-top:auto;padding:14px 18px;border-top:1px solid var(--line2)}
+.theme-sw{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;width:100%;cursor:pointer;font-family:inherit;font-size:13px}
+.theme-sw:hover{border-color:var(--accent)}
+
+/* ---------- 主区域 ---------- */
+#main{flex:1;min-width:0}
+.screen{display:none;padding:22px 26px 60px;max-width:1560px}
+.screen.on{display:block}
+.screen-h{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.screen-h h1{font-size:22px;letter-spacing:1px}
+.screen-h .sub{color:var(--muted);font-size:12.5px}
+.desc{color:var(--muted);font-size:13px;line-height:1.7;margin:8px 0 18px;max-width:1050px}
+.tag{display:inline-block;background:var(--tag-bg);color:var(--tag-fg);border:1px solid var(--tag-fg);border-radius:4px;font-size:10.5px;padding:1px 6px;margin-left:6px;vertical-align:1px;white-space:nowrap;font-weight:400}
+.tags{margin:10px 0 22px;line-height:2.2}
+h2.sec{font-size:15px;margin:26px 0 10px;letter-spacing:1px;border-left:4px solid var(--accent);padding-left:10px}
+
+/* ---------- 原型外壳（模拟应用窗口） ---------- */
+.proto{background:var(--panel2);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.tbar{display:flex;align-items:center;gap:8px;background:var(--panel);border-bottom:1px solid var(--line2);padding:8px 14px;flex-wrap:wrap}
+.tbar .title{font-weight:800;font-size:15px;margin-right:6px}
+.tbar .title small{color:var(--muted);font-weight:400;margin-left:6px}
+.btn{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12.5px;cursor:default;font-family:inherit}
+.btn:hover{border-color:var(--accent)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn.primary{background:#3b7a57;border-color:#3b7a57;color:#f8fff9;font-weight:600}
+.btn.danger{background:#9f4837;border-color:#9f4837;color:#fff8ed;font-weight:600}
+.btn.warn{background:#a94732;border-color:#d56d50;color:#fff8ed}
+.btn.gold{background:var(--accent);border-color:var(--accent);color:#2b1c13;font-weight:700}
+.btn.ghost{background:transparent}
+.btn[disabled]{opacity:.4}
+.menu-btn{position:relative}
+.menu-btn::after{content:"▾";margin-left:5px;font-size:10px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-size:12px;border:1px solid var(--line)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.pill.rec .dot{animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.25}}
+.spacer{flex:1}
+
+/* ---------- 指标卡 ---------- */
+.metrics{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;padding:12px 14px 4px}
+.mcard{background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
+.mcard .lb{color:var(--muted);font-size:11px;letter-spacing:1.5px}
+.mcard .vl{font-size:21px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+.mcard .vl small{font-size:12px;font-weight:400;color:var(--muted)}
+.mcard .sub{font-size:11.5px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.mcard.hero .vl{font-size:26px;color:var(--bt)}
+.mcard .vl.warn{color:var(--pred)}
+
+/* ---------- 工作台三栏 ---------- */
+.cockpit{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;padding:12px 14px 0}
+.chart-zone{min-width:0}
+.chart-card{background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:8px}
+.chart-card svg{width:100%;height:auto;display:block}
+.cbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 4px 4px;font-size:12px;color:var(--muted)}
+.field{display:inline-flex;align-items:center;gap:5px}
+.inp{background:var(--panel2);border:1px solid var(--line);border-radius:5px;color:var(--text);padding:4px 8px;font-size:12px;min-width:64px;font-family:inherit}
+.sw{position:relative;width:38px;height:20px;background:var(--line);border-radius:999px;display:inline-block}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted)}
+.sw.on{background:#3b7a57}.sw.on::after{left:20px;background:#fff}
+/* 右栏卡片 */
+.rail{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:12px}
+.card h3{font-size:13px;letter-spacing:2px;color:var(--muted);font-weight:700;margin-bottom:9px}
+.evgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.ev{border-radius:7px;padding:7px 8px;font-size:12.5px;text-align:center;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:default;position:relative}
+.ev.done{background:var(--tag-bg);border-color:var(--accent);color:var(--accent);font-weight:700}
+.ev.lock{background:#7a3527;border-color:#d56d50;color:#ffddd2;font-weight:700}
+.ev.full{grid-column:1/-1}
+.form-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12.5px}
+.form-row label{color:var(--muted);min-width:58px}
+.form-row .inp{flex:1;min-width:0}
+.list{background:var(--panel2);border-radius:8px;border:1px solid var(--line2);font-size:12px}
+.list .row{padding:6px 9px;border-bottom:1px solid var(--line2);display:flex;gap:8px;align-items:baseline}
+.list .row:last-child{border-bottom:0}
+.list .row b{color:var(--accent);font-variant-numeric:tabular-nums;min-width:52px}
+.list .row span{color:var(--muted)}
+.forecast{font-size:12.5px;padding:3px 0;color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+.sbar{display:flex;gap:18px;align-items:center;background:var(--panel);border-top:1px solid var(--line2);padding:7px 16px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+
+/* ---------- 图例 / SVG 通用 ---------- */
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);padding:6px 8px 2px}
+.legend i{display:inline-block;width:16px;height:3px;border-radius:2px;margin-right:5px;vertical-align:2px}
+.axis-lb{fill:var(--muted);font-size:11px}
+.grid-l{stroke:var(--line2);stroke-width:1}
+.evt-lb{font-size:10.5px;font-weight:700}
+.tgt-lb{font-size:10.5px}
+
+/* ---------- 对话框 ---------- */
+.dlg-wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.45);min-width:360px;max-width:430px;overflow:hidden}
+.dlg .hd{padding:12px 16px;border-bottom:1px solid var(--line2);font-weight:700;font-size:14px}
+.dlg .bd{padding:14px 16px;font-size:13px;line-height:1.65}
+.dlg .bd .hint{color:var(--muted);font-size:12px}
+.dlg .ft{padding:12px 16px;border-top:1px solid var(--line2);display:flex;justify-content:flex-end;gap:8px;background:var(--panel2)}
+.frm{display:grid;grid-template-columns:96px 1fr;gap:10px 12px;align-items:center}
+.frm label{color:var(--muted);font-size:12.5px}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px}
+.note{background:var(--tag-bg);border:1px dashed var(--accent);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--tag-fg);line-height:1.6;margin-top:10px}
+
+/* ---------- 状态带 ---------- */
+.states{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.state{border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:12.5px;background:var(--panel2);min-width:180px}
+.state b{display:block;margin-bottom:4px;font-size:13px}
+.state .st-line{color:var(--muted);display:block;margin-top:4px}
+
+/* ---------- 表格 ---------- */
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--card);border-radius:10px;overflow:hidden}
+th{background:var(--panel);color:var(--muted);text-align:left;padding:9px 12px;font-size:11.5px;letter-spacing:1px;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.55}
+tr:last-child td{border-bottom:0}
+td .code{font-family:Consolas,monospace;font-size:11.5px;color:var(--accent)}
+.ok{color:var(--green);font-weight:700}
+
+/* ---------- 对比 / 回放 ---------- */
+.two-col{display:grid;grid-template-columns:280px minmax(0,1fr);gap:12px;padding:12px 14px 0}
+.kv{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line2)}
+.kv b{font-variant-numeric:tabular-nums}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{padding:5px 14px;border-radius:7px;border:1px solid var(--line);font-size:12.5px;color:var(--muted);cursor:default}
+.tab.on{background:var(--tag-bg);border-color:var(--accent);color:var(--accent);font-weight:700}
+.transport{display:flex;align-items:center;gap:10px;padding:10px 6px 4px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.slider{flex:1;min-width:160px;height:6px;border-radius:99px;background:var(--line);position:relative}
+.slider .fill{position:absolute;left:0;top:0;bottom:0;width:62%;background:var(--accent);border-radius:99px}
+.slider .knob{position:absolute;left:62%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;background:#fff;border:3px solid var(--accent);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.readout{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;font-variant-numeric:tabular-nums;padding:8px 6px}
+.readout b{color:var(--bt)}
+.badge-new{position:absolute;top:-8px;right:-8px;background:var(--red);color:#fff;font-size:10px;border-radius:99px;padding:1px 7px;font-weight:700}
+</style>
+</head>
+<body data-theme-preference="dark">
+
+<nav id="nav">
+  <div class="logo"><b>HB 烘焙软件</b><small>UI 重构全量预览 · v2.0 设计稿</small></div>
+  <div class="grp">总览</div>
+  <button data-s="s0" class="on">功能清单与映射</button>
+  <div class="grp">核心界面</div>
+  <button data-s="s1">① 实时烘焙工作台</button>
+  <button data-s="s2">② 采集源连接与状态</button>
+  <button data-s="s3">③ 事件与操作交互</button>
+  <button data-s="s4">④ 曲线工具与设置</button>
+  <div class="grp">复盘分析</div>
+  <button data-s="s5">⑤ 烘焙回放</button>
+  <button data-s="s6">⑥ 曲线对比 · 批次库</button>
+  <button data-s="s7">⑦ 分析报告与导出</button>
+  <div class="grp">维护</div>
+  <button data-s="s8">⑧ 通道映射与诊断</button>
+  <div class="foot">
+    <button class="theme-sw" id="themeBtn">🌓 切换 深/浅主题</button>
+    <p style="color:var(--muted);font-size:11px;margin-top:10px;line-height:1.6">设计参考：Artisan · Cropster<br>本文件仅为设计预览，未改动任何程序代码</p>
+  </div>
+</nav>
+
+<div id="main">
+
+<!-- ═══════════════ SCREEN 0 ═══════════════ -->
+<section class="screen on" id="s0">
+  <div class="screen-h"><h1>功能清单与界面映射总表</h1><span class="sub">重构方案功能完整性核对基准（源自对 烘焙软件-0.0.0.1.exe 的静态逆向分析）</span></div>
+  <p class="desc">原程序为 PySide6(Qt) + pyqtgraph + SQLite 桌面应用（PyInstaller 打包，Python 3.12），代码模块包括 app.ui.*（9 个界面模块）、app.roast.*（12 个烘焙算法模块）、app.device.*（串口采集）、app.export.*（4 类导出）、app.database.*（SQLite 存储）。下表为<strong>全量功能 → 新 UI 位置</strong>的映射，重构不删减任何一项。</p>
+  <table>
+    <tr><th style="width:90px">原模块</th><th style="width:300px">原始功能（逆向还原）</th><th style="width:110px">原入口</th><th>新 UI 位置（本预览编号）</th></tr>
+    <tr><td class="code">main_window</td><td>工具栏 21 项动作：新建批次 / 打开烘焙档案 / 导入 CSV / 导出图表 PDF / 选择采集源 / 开始监测 / 结束监测 / 批次信息 / 烘焙回放 / 存为参考曲线 / 曲线对比 / 自动识别回温点 / 手动设定回温点 / 曲线分析 / 通道映射 / 切换主题 / 加载背景曲线 / 清除背景曲线 / 显示设置 / 打开调试日志目录 / 导出调试诊断包</td><td class="code">_build_toolbar</td><td>① 顶栏与三菜单（批次 / 曲线工具 / 显示）；⑧ 诊断入口</td></tr>
+    <tr><td class="code">main_window</td><td>7 组实时指标卡：烘焙时间、豆温 BT、升温率 RoR、发展时间、发展率、进风温+进风 RoR、出风温+出风 RoR</td><td class="code">_build_ui</td><td>① 顶部指标带（含发展率状态标签）</td></tr>
+    <tr><td class="code">main_window</td><td>RoR 计算窗口切换（15/30/45/60s）、自动跟随、开始/结束监测按钮、会话状态文案</td><td class="code">_on_ror_window_changed</td><td>① 图表控制条</td></tr>
+    <tr><td class="code">main_window</td><td>时间范围（秒）设置与"应用范围"、坐标轴设置、PDF 导出可用性状态</td><td class="code">_build_chart_control_bar</td><td>① 图表控制条 + ④ 坐标轴对话框</td></tr>
+    <tr><td class="code">main_window</td><td>采集源对话框：COM 口列表 + SIMULATION、协议（HB_MODEL_S / HB_TC4 / HB_LEGACY_3）、波特率、提示文案</td><td class="code">_connect_device</td><td>② 连接面板与状态机</td></tr>
+    <tr><td class="code">main_window</td><td>断线自动重连（限次）、重连失败中止监测、状态栏文案切换</td><td class="code">_attempt_reconnect</td><td>② 状态带（待机/已连接/断开/重连中）</td></tr>
+    <tr><td class="code">main_window</td><td>批次管理：创建批次、打开 *.hbroast、导入 Artisan/Cropster CSV、保存批次、导出 CSV/JSON/txt 报告</td><td class="code">_new_batch 等五方法</td><td>⑥ 批次库 + ⑦ 导出中心</td></tr>
+    <tr><td class="code">main_window</td><td>回温点：自动识别、手动设定、记录（含 RoR 捕获）与替换</td><td class="code">_detect_tp / _set_tp_manually</td><td>① 事件面板 TP 按钮 + ④ 曲线工具菜单</td></tr>
+    <tr><td class="code">main_window</td><td>参考曲线：当前批次存为参考曲线（名称+备注）、加载背景曲线（库选择/JSON 文件）、清除背景、导出 JSON</td><td class="code">_save_current_as_profile 等</td><td>⑥ 曲线库（含背景曲线切换）</td></tr>
+    <tr><td class="code">main_window</td><td>目标温度设置联动：目标转黄 / 目标一爆，里程碑 ETA 预测刷新</td><td class="code">_on_targets_changed</td><td>① 温度目标与预测卡</td></tr>
+    <tr><td class="code">main_window</td><td>主题（深色/浅色工作台）、字体大小、曲线高度、坐标轴设置持久化（QSettings）</td><td class="code">_apply_theme / _restore_axis_settings</td><td>④ 设置面板（保留持久化）</td></tr>
+    <tr><td class="code">main_window</td><td>调试：会话调试日志（含原始帧/命令/状态事件）、打开日志目录、导出诊断 ZIP 包</td><td class="code">_start_debug_logger 等</td><td>⑧ 诊断中心</td></tr>
+    <tr><td class="code">curve_widget</td><td>统一图表：左轴温度 °C / 操作归一化 %，右轴 RoR °C/min；12 条曲线（IT / ET / BT / 背景 BT / 三路 RoR / 背景 RoR / BT RoR 预测 / 燃气 / 风门 / 转速）；事件竖线（5 类）、目标温度虚线；曲线可见性、单曲线线宽、三轴 min/max/span/major/auto、自动跟随、快照导出</td><td class="code">CurveWidget</td><td>① 主图表（交互密度提升）</td></tr>
+    <tr><td class="code">event_panel</td><td>8 类事件按钮：下豆 CHARGE、回温点 TP、转黄 YELLOW、一爆开始/结束、二爆开始/结束、排豆 DROP；单击记录 → 再点撤销 → 再点重录；DROP 一次性锁定；备注绑定下一次记录；事件列表</td><td class="code">EventPanel</td><td>① 右栏事件卡 + ③ 交互状态图解</td></tr>
+    <tr><td class="code">target_panel</td><td>目标转黄 / 目标一爆数值输入，预计转黄 / 预计一爆 ETA 文案</td><td class="code">TargetPanel</td><td>① 温度目标与预测卡</td></tr>
+    <tr><td class="code">action_panel</td><td>人工操作记录：燃气 kPa、风门档位、转速档位、备注、"记录操作"（0-10 归一化上图）</td><td class="code">ActionPanel</td><td>① 人工操作记录卡</td></tr>
+    <tr><td class="code">replay_window</td><td>回放：温度图 + BT RoR 图双图、播放/停止/重置、倍速下拉、进度滑杆、当前读数 / 已发生事件 / 最近人工操作三行信息</td><td class="code">ReplayWindow</td><td>⑤ 烘焙回放</td></tr>
+    <tr><td class="code">compare_window</td><td>曲线对比：来源模式（参考曲线 / 历史批次）、目标选择、BT/ET 对比图 + BT RoR 对比图、指标（豆温 MAE、重叠时长、当前与目标的一爆/排豆/发展比例）</td><td class="code">CompareWindow</td><td>⑥ 曲线对比</td></tr>
+    <tr><td class="code">batch_info_dialog</td><td>批次信息：设备、操作者、咖啡名称、生豆重量 g、熟豆重量 g</td><td class="code">BatchInfoDialog</td><td>⑦ 批次信息编辑</td></tr>
+    <tr><td class="code">axis_settings_dialog</td><td>三轴（X / 左 Y / 右 Y）min / max / span / 主刻度 / 自动适应，span 联动更新</td><td class="code">AxisSettingsDialog</td><td>④ 坐标轴设置</td></tr>
+    <tr><td class="code">display_settings_dialog</td><td>显示设置：界面字体 pt、曲线高度（大曲线档位）</td><td class="code">DisplaySettingsDialog</td><td>④ 显示设置</td></tr>
+    <tr><td class="code">device.*</td><td>串口管理（端口枚举、连接状态信号、命令下发）、HB 三协议解析（Model S 四路 1200/3400 通道、TC4 四路、旧三路）、CH1-4 → WORK/AMBIENT 通道映射</td><td class="code">serial_manager 等</td><td>② 连接面板 + ⑧ 通道映射</td></tr>
+    <tr><td class="code">roast.*</td><td>RoR 计算（窗口化）、RoR 预测投影、里程碑 ETA 预测、回温点自动检测、发展期指标（发展秒数/比例）、曲线对比指标（MAE / 地标）、曲率分析（RoR 下坠/上扬计数）、采样质量门（剔除异常帧）、CSV 导入</td><td class="code">app.roast</td><td>①②⑦ 算法全部保留，仅换呈现层</td></tr>
+    <tr><td class="code">export.*</td><td>CSV 采样导出、JSON 全量导出、txt 报告、图表 PDF 导出（含背景曲线时可用）</td><td class="code">app.export</td><td>⑦ 导出中心（PDF 可用性规则同原）</td></tr>
+    <tr><td class="code">database.*</td><td>SQLite 存储：roast_info / samples / events / manual_actions、参考曲线表、迁移机制、*.hbroast 档案读写</td><td class="code">RoastDatabase</td><td>⑥ 批次库数据源（结构不变）</td></tr>
+  </table>
+  <div class="note">核对方式：右侧导航逐屏打开预览，每块面板上均标注「原:xxx」徽标，可按本表逐项勾对。</div>
+</section>
+
+<!-- ═══════════════ SCREEN 1 ═══════════════ -->
+<section class="screen" id="s1">
+  <div class="screen-h"><h1>① 实时烘焙工作台（Roast Cockpit）</h1><span class="sub">主界面 · 监测中状态</span></div>
+  <p class="desc">对齐 Artisan 的"一屏烘焙"理念：顶部指标带一眼读数，中央大图表（温度左轴 + RoR 右轴 + 操作归一化），右栏为事件 / 目标 / 操作三卡。原 MainWindow 的全部 21 个工具栏动作归入顶栏与三个下拉菜单，无删减。</p>
+  <div class="tags">
+    <span class="tag">原:MainWindow._build_ui（左右分栏）</span><span class="tag">原:MainWindow._build_toolbar</span><span class="tag">原:CurveWidget（统一图表）</span><span class="tag">原:EventPanel</span><span class="tag">原:TargetPanel</span><span class="tag">原:ActionPanel</span><span class="tag">原:_metric_card ×7</span><span class="tag">原:_build_chart_control_bar</span>
+  </div>
+
+  <div class="proto">
+    <!-- 顶栏 -->
+    <div class="tbar">
+      <span class="title">HB 烘焙工作台<small>v2.0</small></span>
+      <span class="pill rec"><span class="dot"></span>采集中</span>
+      <span class="pill" style="color:var(--muted)">批次 #0128 · 埃塞俄比亚 日晒 G1</span>
+      <span class="spacer"></span>
+      <button class="btn menu-btn">批次</button>
+      <button class="btn menu-btn">曲线工具</button>
+      <button class="btn menu-btn">显示</button>
+      <button class="btn">诊断</button>
+      <button class="btn">选择采集源</button>
+      <button class="btn primary">开始监测</button>
+      <button class="btn danger">结束监测</button>
+      <button class="btn ghost">🌓</button>
+    </div>
+
+    <!-- 指标带 -->
+    <div class="metrics">
+      <div class="mcard hero"><div class="lb">烘焙时间</div><div class="vl">08:32</div><div class="sub">来源 COM3 · 115200</div></div>
+      <div class="mcard hero"><div class="lb">豆温 BT</div><div class="vl">182.4<small> °C</small></div><div class="sub">回温点 01:02 · 88.1°C</div></div>
+      <div class="mcard"><div class="lb">升温率 RoR</div><div class="vl">12.6<small> °C/min</small></div><div class="sub">窗口 30s</div></div>
+      <div class="mcard"><div class="lb">发展时间</div><div class="vl">1:24</div><div class="sub">进行中</div></div>
+      <div class="mcard"><div class="lb">发展率</div><div class="vl">16.4<small> %</small></div><div class="sub">等待一爆→已进入</div></div>
+      <div class="mcard"><div class="lb">进风温 IT</div><div class="vl">210.5<small> °C</small></div><div class="sub">IT RoR 8.2 °C/min</div></div>
+      <div class="mcard"><div class="lb">出风温 ET</div><div class="vl">168.2<small> °C</small></div><div class="sub">ET RoR 6.9 °C/min</div></div>
+    </div>
+
+    <!-- 三栏主体 -->
+    <div class="cockpit">
+      <div class="chart-zone">
+        <div class="chart-card">
+          <div class="legend">
+            <span><i style="background:var(--it)"></i>入风温 IT</span>
+            <span><i style="background:var(--et)"></i>环境温 ET</span>
+            <span><i style="background:var(--bt)"></i>豆温 BT</span>
+            <span><i style="background:var(--bt);opacity:.35"></i>背景 BT</span>
+            <span><i style="background:var(--ror)"></i>BT RoR（右轴）</span>
+            <span><i style="background:var(--ror);opacity:.45"></i>IT/ET RoR</span>
+            <span><i style="background:var(--pred)"></i>BT RoR 预测</span>
+            <span><i style="background:#8ec07c"></i>燃气/风门/转速（归一化）</span>
+          </div>
+          <svg viewBox="0 0 920 400" xmlns="http://www.w3.org/2000/svg">
+            <!-- 网格 -->
+            <g class="grid-l">
+              <line x1="70" y1="360" x2="900" y2="360"/><line x1="70" y1="288" x2="900" y2="288"/>
+              <line x1="70" y1="216" x2="900" y2="216"/><line x1="70" y1="144" x2="900" y2="144"/>
+              <line x1="70" y1="72" x2="900" y2="72"/><line x1="70" y1="0" x2="900" y2="0"/>
+              <line x1="70" y1="0" x2="70" y2="360"/><line x1="198" y1="0" x2="198" y2="360"/>
+              <line x1="326" y1="0" x2="326" y2="360"/><line x1="454" y1="0" x2="454" y2="360"/>
+              <line x1="582" y1="0" x2="582" y2="360"/><line x1="710" y1="0" x2="710" y2="360"/>
+              <line x1="838" y1="0" x2="838" y2="360"/>
+            </g>
+            <!-- 轴标签 -->
+            <text class="axis-lb" x="10" y="364">0</text><text class="axis-lb" x="4" y="292">50</text>
+            <text class="axis-lb" x="4" y="220">100</text><text class="axis-lb" x="4" y="148">150</text>
+            <text class="axis-lb" x="4" y="76">200</text><text class="axis-lb" x="4" y="10">250</text>
+            <text class="axis-lb" x="70" y="382">0</text><text class="axis-lb" x="188" y="382">90s</text>
+            <text class="axis-lb" x="316" y="382">180s</text><text class="axis-lb" x="446" y="382">270s</text>
+            <text class="axis-lb" x="574" y="382">360s</text><text class="axis-lb" x="702" y="382">450s</text>
+            <text class="axis-lb" x="832" y="382">540s</text>
+            <text class="axis-lb" x="905" y="364" text-anchor="end">0</text><text class="axis-lb" x="905" y="256" text-anchor="end">12</text>
+            <text class="axis-lb" x="905" y="148" text-anchor="end">24</text><text class="axis-lb" x="905" y="40" text-anchor="end">36</text>
+            <!-- 操作归一化阶梯 -->
+            <path d="M70,352 H262 V344 H454 V348 H646 V356 H900" fill="none" stroke="#8ec07c" stroke-width="1.4" opacity=".55"/>
+            <path d="M70,346 H326 V338 H582 V334 H900" fill="none" stroke="#8ec07c" stroke-width="1.2" stroke-dasharray="5 3" opacity=".5"/>
+            <!-- 背景曲线（参考） -->
+            <path d="M70,128 C110,220 150,208 200,178 C280,132 360,110 454,88 C560,64 700,58 900,44" fill="none" stroke="#8ba6bb" stroke-width="1.6" stroke-dasharray="4 4" opacity=".6"/>
+            <!-- 温度曲线 -->
+            <path d="M70,131 C82,196 95,234 108,236 C140,232 180,205 220,190 C280,168 350,150 420,136 C480,124 540,112 620,98 C700,86 790,74 900,58" fill="none" stroke="var(--it)" stroke-width="2"/>
+            <path d="M70,187 C90,244 110,254 128,250 C170,240 240,208 320,186 C400,166 500,146 620,126 C720,110 820,96 900,88" fill="none" stroke="var(--et)" stroke-width="2"/>
+            <path d="M70,121 C86,216 100,233 112,232 C150,228 190,206 240,190 C300,171 370,152 440,138 C500,127 560,114 640,102 C720,91 810,80 900,72" fill="none" stroke="var(--bt)" stroke-width="3"/>
+            <!-- 目标温度线 -->
+            <line x1="70" y1="130" x2="900" y2="130" stroke="#d7ae52" stroke-width="1.2" stroke-dasharray="2 4"/>
+            <text class="tgt-lb" x="76" y="126" fill="#d7ae52">目标转黄 160°C</text>
+            <line x1="70" y1="78" x2="900" y2="78" stroke="#c56d53" stroke-width="1.2" stroke-dasharray="2 4"/>
+            <text class="tgt-lb" x="76" y="74" fill="#c56d53">目标一爆 196°C</text>
+            <!-- RoR（右轴） -->
+            <path d="M112,52 C150,120 200,180 260,214 C330,248 420,272 520,288 C620,302 760,314 900,320" fill="none" stroke="var(--ror)" stroke-width="2" opacity=".85"/>
+            <path d="M620,300 C700,304 800,310 900,316" fill="none" stroke="var(--pred)" stroke-width="1.6" stroke-dasharray="6 4"/>
+            <!-- 事件竖线 -->
+            <line x1="108" y1="0" x2="108" y2="360" stroke="#9e7c48" stroke-width="1.4" stroke-dasharray="6 4"/>
+            <text class="evt-lb" x="112" y="14" fill="#d8b36b">TP 01:02</text>
+            <line x1="420" y1="0" x2="420" y2="360" stroke="#9e7c48" stroke-width="1.4" stroke-dasharray="6 4"/>
+            <text class="evt-lb" x="424" y="14" fill="#d8b36b">YELLOW 04:36</text>
+            <line x1="648" y1="0" x2="648" y2="360" stroke="#9e7c48" stroke-width="1.4" stroke-dasharray="6 4"/>
+            <text class="evt-lb" x="652" y="14" fill="#d8b36b">FC 07:08</text>
+            <!-- 当前点光标 -->
+            <circle cx="688" cy="96" r="5" fill="var(--bt)"/><circle cx="688" cy="96" r="10" fill="var(--bt)" opacity=".2"/>
+            <line x1="688" y1="0" x2="688" y2="360" stroke="var(--bt)" stroke-width="1" opacity=".35"/>
+          </svg>
+          <!-- 图表控制条 -->
+          <div class="cbar">
+            <span class="field">时间范围（秒）<input class="inp" value="0" style="min-width:52px"> – <input class="inp" value="660" style="min-width:52px"><button class="btn sm">应用范围</button></span>
+            <span class="field">RoR 窗口
+              <select class="inp"><option>15s</option><option selected>30s</option><option>45s</option><option>60s</option></select>
+            </span>
+            <span class="field">自动跟随 <span class="sw on"></span></span>
+            <span class="spacer"></span>
+            <button class="btn sm">坐标轴</button>
+            <button class="btn sm">曲线显示 ▾</button>
+            <button class="btn sm">线宽 ▾</button>
+            <button class="btn sm gold">导出 PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右栏 -->
+      <div class="rail">
+        <div class="card">
+          <h3>烘焙事件 <span class="tag">原:EventPanel</span></h3>
+          <div class="evgrid">
+            <div class="ev done">下豆 00:00</div>
+            <div class="ev done">回温点 01:02</div>
+            <div class="ev done">转黄 04:36</div>
+            <div class="ev">一爆开始</div>
+            <div class="ev">一爆结束</div>
+            <div class="ev">二爆开始</div>
+            <div class="ev">二爆结束</div>
+            <div class="ev full lock">排豆并结束（锁定）</div>
+          </div>
+          <div class="form-row" style="margin-top:9px"><input class="inp" placeholder="备注（绑定到下一次事件记录）" style="flex:1"></div>
+          <div class="list" style="margin-top:8px">
+            <div class="row"><b>00:00</b><span>下豆</span></div>
+            <div class="row"><b>01:02</b><span>回温点 · RoR 14.2</span></div>
+            <div class="row"><b>04:36</b><span>转黄 · 火力下调</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>温度目标与预测 <span class="tag">原:TargetPanel + milestone_forecast</span></h3>
+          <div class="form-row"><label>目标转黄</label><input class="inp" value="160"><span>°C</span></div>
+          <div class="form-row"><label>目标一爆</label><input class="inp" value="196"><span>°C</span></div>
+          <div class="forecast">预计转黄：约 04:30（已达标 ✓）</div>
+          <div class="forecast">预计一爆：约 09:05</div>
+        </div>
+        <div class="card">
+          <h3>人工操作记录 <span class="tag">原:ActionPanel</span></h3>
+          <div class="form-row"><label>燃气</label><input class="inp" value="1.8"><span>kPa</span></div>
+          <div class="form-row"><label>风门档位</label><input class="inp" value="6"><span>/ 10</span></div>
+          <div class="form-row"><label>转速档位</label><input class="inp" value="4"><span>/ 10</span></div>
+          <div class="form-row"><label>备注</label><input class="inp" placeholder="备注（可选）"></div>
+          <button class="btn primary" style="width:100%">记录操作</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 状态栏 -->
+    <div class="sbar">
+      <span>状态：采集中（设备已连接）</span><span>来源 COM3 · HB_MODEL_S · 115200 baud</span>
+      <span>已采集 512 秒 · 1024 帧</span><span>实时数据 IT 210.5 / ET 168.2 / BT 182.4 °C</span>
+      <span class="spacer"></span><span>质量门：已忽略 3 帧异常采样</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREEN 2 ═══════════════ -->
+<section class="screen" id="s2">
+  <div class="screen-h"><h1>② 采集源连接与监测状态机</h1><span class="sub">交互状态：连接对话框 · 四种会话状态 · 断线重连</span></div>
+  <p class="desc">对应原 _connect_device 对话框（COM 枚举 + SIMULATION、三种 HB 协议、波特率）与 _attempt_reconnect 重连机制。重构后增加状态可视化与重连进度提示，规则不变：监测进行中禁止切换采集源；重连超过上限自动中止本批次监测。</p>
+  <div class="tags"><span class="tag">原:MainWindow._connect_device</span><span class="tag">原:serial_manager.available_port_details</span><span class="tag">原:_schedule_reconnect / _attempt_reconnect</span><span class="tag">原:_abort_monitoring_after_reconnect_failure</span><span class="tag">原:_on_state_changed</span></div>
+
+  <div class="dlg-wrap">
+    <div class="dlg">
+      <div class="hd">选择采集源与协议 <span class="tag">原:_connect_device</span></div>
+      <div class="bd">
+        <div class="frm">
+          <label>采集源</label>
+          <select class="inp"><option>COM3 — USB-SERIAL CH340 (COM3)</option><option>COM5 — 蓝牙串口 (COM5)</option><option>SIMULATION（仅测试数据）</option></select>
+          <label>协议 profile</label>
+          <select class="inp"><option>HB_MODEL_S · HB Model S（M2S/M6S/L2S/L6S）</option><option>HB_TC4 · TC4 四路</option><option>HB_LEGACY_3 · 旧三路</option><option>SIMULATION</option></select>
+          <label>波特率</label>
+          <select class="inp"><option>115200</option><option>9600</option><option>19200</option><option>57600</option></select>
+        </div>
+        <p class="hint" style="margin-top:12px">Model S 使用 CH34x USB 串口、115200 baud；程序按已验证的 1200 与 3400 两组通道读取四路温度。连接不会自动试探波特率；HB/TC4 仅在选定 profile 后发送 READ/CHAN。</p>
+        <div class="note">监测进行中选择本项时将提示：请先结束监测，再切换采集源。（规则与原版一致）</div>
+      </div>
+      <div class="ft"><button class="btn">取消</button><button class="btn primary">确定（点击开始监测后连接）</button></div>
+    </div>
+
+    <div>
+      <h2 class="sec">会话状态带（原状态栏 + session_status_label）</h2>
+      <div class="states">
+        <div class="state"><b><span class="pill"><span class="dot" style="background:var(--muted);box-shadow:none"></span>待机（未开始）</span></b>初始状态<span class="st-line">就绪：请选择真实 COM 端口或显式选择 SIMULATION</span></div>
+        <div class="state"><b><span class="pill"><span class="dot"></span>待机（已连接）</span></b>设备已连接，未开始记录<span class="st-line">状态：设备已连接</span></div>
+        <div class="state"><b><span class="pill rec"><span class="dot"></span>采集中（设备已连接）</span></b>正常记录<span class="st-line">监测已开始，等待温度数据</span></div>
+        <div class="state"><b><span class="pill rec"><span class="dot" style="background:var(--red);box-shadow:0 0 6px var(--red)"></span>采集中（重连中 2/5）</span></b>串口异常自动重连<span class="st-line">重连采集源：COM3 … 采集源重连失败（已尝试 N 次）将中止监测</span></div>
+      </div>
+      <h2 class="sec">开始 / 结束监测按钮状态（原 start/stopMonitorButton）</h2>
+      <div class="states">
+        <div class="state"><b>待机</b><button class="btn primary">▶ 开始监测</button> <button class="btn" disabled>■ 结束监测</button><span class="st-line">事件/操作面板可预填，监测开始后启用记录</span></div>
+        <div class="state"><b>采集中</b><button class="btn" disabled>▶ 开始监测</button> <button class="btn danger">■ 结束监测</button><span class="st-line">结束后事件与人工操作锁定（原 _end_monitoring 行为）</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREEN 3 ═══════════════ -->
+<section class="screen" id="s3">
+  <div class="screen-h"><h1>③ 烘焙事件与人工操作的交互状态</h1><span class="sub">记录 → 撤销 → 重录 · DROP 锁定 · 备注绑定</span></div>
+  <p class="desc">原 EventPanel 的核心交互：六个里程碑按钮"首次按下记录当前时间，再次按下撤销，撤销后再次按下重新记录"；排豆（DROP）一次性锁定，避免结束后误改。重构保留完全一致的交互语义，仅强化视觉反馈（颜色/角标/时间回显）。</p>
+  <div class="tags"><span class="tag">原:EventPanel._toggle_event</span><span class="tag">原:EVENT_BUTTONS 八按钮</span><span class="tag">原:_on_event_requested / _on_event_cancelled</span><span class="tag">原:add_event / validate_event</span></div>
+
+  <h2 class="sec">事件按钮三态 + 锁定态</h2>
+  <div class="proto" style="padding:16px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:980px">
+      <div>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:8px">状态 A · 未记录</p>
+        <div class="ev" style="padding:12px">一爆开始</div>
+        <p class="hint" style="color:var(--muted);font-size:11.5px;margin-top:6px">按下记录 · 按下记录，再点撤销</p>
+      </div>
+      <div>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:8px">状态 B · 已记录</p>
+        <div class="ev done" style="padding:12px">一爆开始<br><span style="font-size:16px">07:08</span></div>
+        <p style="color:var(--muted);font-size:11.5px;margin-top:6px">再次按下撤销 · 时间与 RoR 已入库</p>
+      </div>
+      <div>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:8px">状态 C · 撤销后可重录</p>
+        <div class="ev" style="padding:12px;border-style:dashed">一爆开始（已撤销）</div>
+        <p style="color:var(--muted);font-size:11.5px;margin-top:6px">再次按下重新记录新时间</p>
+      </div>
+      <div>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:8px">状态 D · DROP 锁定</p>
+        <div class="ev lock" style="padding:12px">排豆并结束 🔒<br><span style="font-size:16px">11:20</span></div>
+        <p style="color:var(--muted);font-size:11.5px;margin-top:6px">按下即记录并锁定 · 结束操作不可撤销</p>
+      </div>
+    </div>
+    <div class="note">撤销事件将同步删除数据库记录（DELETE FROM events WHERE roast_id=? AND event_type=?）；DROP 事件触发后自动结束监测并锁定事件与操作面板 —— 与原版逻辑一致。</div>
+  </div>
+
+  <h2 class="sec">事件列表面板（含备注与 RoR 快照）</h2>
+  <div class="proto" style="padding:14px;max-width:420px">
+    <div class="card" style="border:0">
+      <h3>事件时间线</h3>
+      <div class="list">
+        <div class="row"><b>00:00</b><span>下豆</span></div>
+        <div class="row"><b>01:02</b><span>回温点 · RoR 14.2 °C/min</span></div>
+        <div class="row"><b>04:36</b><span>转黄 · 备注：火力下调至 1.8kPa</span></div>
+        <div class="row"><b>07:08</b><span>一爆开始</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">人工操作记录（0-10 档归一化叠图）</h2>
+  <div class="proto" style="padding:14px;max-width:420px">
+    <div class="card" style="border:0">
+      <h3>人工操作记录 <span class="tag">原:ActionPanel._emit</span></h3>
+      <div class="form-row"><label>燃气</label><input class="inp" value="1.8"><span>kPa</span></div>
+      <div class="form-row"><label>风门档位</label><input class="inp" value="6"><span>档（0-10）</span></div>
+      <div class="form-row"><label>转速档位</label><input class="inp" value="4"><span>档（0-10）</span></div>
+      <div class="form-row"><label>备注</label><input class="inp" value="转黄后降压"></div>
+      <button class="btn primary" style="width:100%">记录操作</button>
+      <div class="note">记录后状态栏提示「已记录人工操作：燃气 1.8 kPa，风门 6 档，转速 4 档」，并以阶梯线叠加到主图表左轴（归一化 %）。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREEN 4 ═══════════════ -->
+<section class="screen" id="s4">
+  <div class="screen-h"><h1>④ 曲线工具与显示设置</h1><span class="sub">坐标轴 · 曲线可见性 · 线宽 · 主题 · 字体与曲线高度</span></div>
+  <p class="desc">对应原"曲线显示"与"单曲线线宽"下拉菜单、AxisSettingsDialog（三轴 min/max/span/major/auto，span 以当前最小值为起点联动更新最大值）、DisplaySettingsDialog（界面字体 pt、曲线高度档位）与深/浅主题切换。所有设置沿用 QSettings 持久化，坐标轴设置随批次视图自动恢复。</p>
+  <div class="tags"><span class="tag">原:AxisSettingsDialog</span><span class="tag">原:DisplaySettingsDialog</span><span class="tag">原:curve_visibility_menu</span><span class="tag">原:curve_width_menu</span><span class="tag">原:_choose_theme</span><span class="tag">原:_restore_axis_settings / _save_axis_settings</span></div>
+
+  <div class="dlg-wrap">
+    <div class="dlg">
+      <div class="hd">坐标轴范围设置 <span class="tag">原:AxisSettingsDialog</span></div>
+      <div class="bd">
+        <p class="hint" style="margin-bottom:12px">跨度输入会以当前最小值为起点更新最大值；勾选自动适应后，烘焙数据更新时将重算该轴范围。</p>
+        <table style="font-size:12px">
+          <tr><th>轴</th><th>最小</th><th>最大</th><th>跨度</th><th>主刻度</th><th>自动</th></tr>
+          <tr><td>X（时间 s）</td><td><input class="inp" value="0" style="min-width:52px"></td><td><input class="inp" value="660" style="min-width:52px"></td><td><input class="inp" value="660" style="min-width:52px"></td><td><input class="inp" value="60" style="min-width:44px"></td><td>☑</td></tr>
+          <tr><td>左 Y（°C/%）</td><td><input class="inp" value="0" style="min-width:52px"></td><td><input class="inp" value="250" style="min-width:52px"></td><td><input class="inp" value="250" style="min-width:52px"></td><td><input class="inp" value="50" style="min-width:44px"></td><td>☑</td></tr>
+          <tr><td>右 Y（°C/min）</td><td><input class="inp" value="0" style="min-width:52px"></td><td><input class="inp" value="40" style="min-width:52px"></td><td><input class="inp" value="40" style="min-width:52px"></td><td><input class="inp" value="10" style="min-width:44px"></td><td>☐</td></tr>
+        </table>
+        <div class="note">应用成功提示「三轴范围与主刻度已应用」；X 轴时间限定 0–99999 秒，主刻度必须大于 0，最大值必须大于最小值（校验文案同原版）。</div>
+      </div>
+      <div class="ft"><button class="btn">取消</button><button class="btn primary">应用</button></div>
+    </div>
+
+    <div class="dlg">
+      <div class="hd">显示设置 <span class="tag">原:DisplaySettingsDialog</span></div>
+      <div class="bd">
+        <p class="hint" style="margin-bottom:12px">调整全界面字体与曲线高度，便于不同屏幕和观看距离使用。</p>
+        <div class="frm">
+          <label>界面字体</label><select class="inp"><option>9 pt</option><option selected>10 pt</option><option>11 pt</option><option>12 pt</option><option>14 pt</option></select>
+          <label>曲线高度</label><select class="inp"><option>0.6×</option><option>0.8×</option><option selected>1.0×</option><option>大曲线 1.25×</option><option>1.5×</option></select>
+          <label>界面主题</label><select class="inp"><option selected>深色工作台</option><option>浅色工作台</option></select>
+        </div>
+        <div class="note">保存后写入 QSettings（font_size / curve_scale / theme），下次启动自动恢复 —— 与原版一致。</div>
+      </div>
+      <div class="ft"><button class="btn">取消</button><button class="btn primary">应用</button></div>
+    </div>
+
+    <div class="dlg">
+      <div class="hd">曲线显示 <span class="tag">原:curve_visibility_menu</span></div>
+      <div class="bd">
+        <div class="chk">☑ 入风温 IT</div><div class="chk">☑ 环境温 ET</div><div class="chk">☑ 豆温 BT</div>
+        <div class="chk">☑ 背景 BT</div><div class="chk">☐ IT RoR</div><div class="chk">☐ ET RoR</div>
+        <div class="chk">☑ BT RoR</div><div class="chk">☐ 背景 RoR</div><div class="chk">☑ BT RoR 预测</div>
+        <div class="chk">☑ 燃气（归一化）</div><div class="chk">☑ 风门档位（归一化）</div><div class="chk">☑ 转速档位（归一化）</div>
+      </div>
+      <div class="ft"><button class="btn">单曲线线宽 ▾（0.75× / 1× / 1.5× / 2×）</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREEN 5 ═══════════════ -->
+<section class="screen" id="s5">
+  <div class="screen-h"><h1>⑤ 烘焙回放（Replay）</h1><span class="sub">离线复盘 · 不与烘焙机通讯</span></div>
+  <p class="desc">对应原 ReplayWindow：双图（温度回放 + BT 升温率回放）、播放/停止/重置、倍速下拉、进度滑杆任意跳转、三行实时信息（当前读数 / 已发生事件 / 最近人工操作）。重构将信息读数升级为时间轴联动，数据能力不变。</p>
+  <div class="tags"><span class="tag">原:ReplayWindow._play/_tick/_jump/_render</span><span class="tag">原:回放倍速 combo</span><span class="tag">原:progress slider</span></div>
+
+  <div class="proto">
+    <div class="tbar">
+      <span class="title">烘焙回放<small>批次 #0128 · 埃塞俄比亚 日晒 G1</small></span>
+      <span class="spacer"></span>
+      <button class="btn sm">关闭</button>
+    </div>
+    <div style="padding:12px 14px">
+      <div class="chart-card">
+        <div class="legend"><span><i style="background:var(--it)"></i>入风温 IT</span><span><i style="background:var(--et)"></i>环境温 ET</span><span><i style="background:var(--bt)"></i>豆温 BT</span></div>
+        <svg viewBox="0 0 920 250" xmlns="http://www.w3.org/2000/svg">
+          <g class="grid-l">
+            <line x1="70" y1="220" x2="900" y2="220"/><line x1="70" y1="165" x2="900" y2="165"/>
+            <line x1="70" y1="110" x2="900" y2="110"/><line x1="70" y1="55" x2="900" y2="55"/><line x1="70" y1="0" x2="900" y2="0"/>
+            <line x1="70" y1="0" x2="70" y2="220"/><line x1="198" y1="0" x2="198" y2="220"/><line x1="326" y1="0" x2="326" y2="220"/>
+            <line x1="454" y1="0" x2="454" y2="220"/><line x1="582" y1="0" x2="582" y2="220"/><line x1="710" y1="0" x2="710" y2="220"/><line x1="838" y1="0" x2="838" y2="220"/>
+          </g>
+          <text class="axis-lb" x="10" y="224">0</text><text class="axis-lb" x="2" y="169">100</text><text class="axis-lb" x="2" y="114">150</text><text class="axis-lb" x="2" y="59">200</text><text class="axis-lb" x="2" y="8">250</text>
+          <text class="axis-lb" x="66" y="242">0</text><text class="axis-lb" x="190" y="242">90s</text><text class="axis-lb" x="318" y="242">180s</text><text class="axis-lb" x="442" y="242">270s</text><text class="axis-lb" x="570" y="242">360s</text><text class="axis-lb" x="700" y="242">450s</text><text class="axis-lb" x="828" y="242">540s</text>
+          <!-- 已播放部分实线，未播放虚淡 -->
+          <path d="M70,76 C86,168 100,186 112,185 C150,181 190,160 240,145 C300,127 370,109 440,96 C500,86 560,76 620,68" fill="none" stroke="var(--it)" stroke-width="2"/>
+          <path d="M70,122 C90,178 110,188 128,184 C170,174 240,145 320,124 C400,106 500,90 620,74" fill="none" stroke="var(--et)" stroke-width="2"/>
+          <path d="M70,72 C86,162 100,178 112,177 C150,173 190,153 240,140 C300,122 370,105 440,93 C500,83 560,74 620,66" fill="none" stroke="var(--bt)" stroke-width="3"/>
+          <path d="M620,66 C700,58 790,52 900,48" fill="none" stroke="var(--bt)" stroke-width="2" stroke-dasharray="3 5" opacity=".35"/>
+          <path d="M620,74 C700,66 790,60 900,56" fill="none" stroke="var(--et)" stroke-width="2" stroke-dasharray="3 5" opacity=".3"/>
+          <line x1="108" y1="0" x2="108" y2="220" stroke="#9e7c48" stroke-width="1.3" stroke-dasharray="6 4"/>
+          <text class="evt-lb" x="112" y="12" fill="#d8b36b">TP</text>
+          <line x1="420" y1="0" x2="420" y2="220" stroke="#9e7c48" stroke-width="1.3" stroke-dasharray="6 4"/>
+          <text class="evt-lb" x="424" y="12" fill="#d8b36b">YELLOW</text>
+          <circle cx="620" cy="66" r="5" fill="var(--bt)"/>
+        </svg>
+        <div class="legend" style="margin-top:6px"><span><i style="background:var(--ror)"></i>BT 升温率</span></div>
+        <svg viewBox="0 0 920 130" xmlns="http://www.w3.org/2000/svg">
+          <g class="grid-l">
+            <line x1="70" y1="110" x2="900" y2="110"/><line x1="70" y1="55" x2="900" y2="55"/><line x1="70" y1="0" x2="900" y2="0"/>
+            <line x1="70" y1="0" x2="70" y2="110"/><line x1="326" y1="0" x2="326" y2="110"/><line x1="582" y1="0" x2="582" y2="110"/><line x1="838" y1="0" x2="838" y2="110"/>
+          </g>
+          <text class="axis-lb" x="10" y="114">0</text><text class="axis-lb" x="4" y="59">20</text><text class="axis-lb" x="4" y="8">40</text>
+          <path d="M112,14 C160,60 220,82 300,92 C380,100 500,104 620,106" fill="none" stroke="var(--ror)" stroke-width="2"/>
+          <path d="M620,106 C720,107 820,108 900,108" fill="none" stroke="var(--ror)" stroke-width="2" stroke-dasharray="3 5" opacity=".35"/>
+          <circle cx="620" cy="106" r="4" fill="var(--ror)"/>
+        </svg>
+      </div>
+      <!-- 播放控制 -->
+      <div class="transport">
+        <button class="btn primary sm">▶ 播放</button>
+        <button class="btn sm">■ 停止</button>
+        <button class="btn sm">⟲ 重置</button>
+        <span class="field">倍速 <select class="inp" style="min-width:70px"><option>0.5×</option><option selected>1×</option><option>2×</option><option>4×</option><option>8×</option></select></span>
+        <div class="slider"><div class="fill"></div><div class="knob"></div></div>
+        <span style="font-variant-numeric:tabular-nums">07:28 / 11:20</span>
+      </div>
+      <div class="readout">
+        <span>时间：<b>448.0 秒</b></span><span>IT：<b>205.1°C</b></span><span>ET：<b>161.0°C</b></span><span>BT：<b>178.6°C</b></span><span>BT 升温率：<b>9.4 °C/min</b></span>
+      </div>
+      <div class="readout" style="color:var(--muted)">
+        <span>已发生事件：回温点(62s) · 转黄(276s)</span>
+        <span>最近人工操作：燃气 1.8 kPa，风门 6 档，转速 4 档</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREEN 6 ═══════════════ -->
+<section class="screen" id="s6">
+  <div class="screen-h"><h1>⑥ 曲线对比 · 批次库</h1><span class="sub">参考曲线 / 历史批次对比 + 批次档案管理（打开 .hbroast / 导入 CSV / 存为参考曲线）</span></div>
+  <p class="desc">对应原 CompareWindow（来源模式、目标选择、BT/ET 对比图、BT RoR 对比图、MAE 指标），并将散落在工具栏的批次档案动作（打开烘焙档案、导入 Artisan/Cropster CSV、存为参考曲线、加载/清除背景曲线、导出参考曲线 JSON）整合为左侧"批次与曲线库"，形成完整的烘焙工作流闭环。</p>
+  <div class="tags"><span class="tag">原:CompareWindow._run_compare</span><span class="tag">原:compute_curve_metrics / roast_landmarks</span><span class="tag">原:_open_batch / _import_csv</span><span class="tag">原:_save_current_as_profile</span><span class="tag">原:_load_background_curve / _clear_background_curve</span><span class="tag">原:list_reference_profiles</span></div>
+
+  <div class="proto">
+    <div class="tbar">
+      <span class="title">曲线对比</span>
+      <span class="spacer"></span>
+      <button class="btn sm">关闭</button>
+    </div>
+    <div class="two-col">
+      <!-- 左：批次库 -->
+      <div class="rail">
+        <div class="card">
+          <h3>对比来源</h3>
+          <div class="tabs"><span class="tab on">历史批次</span><span class="tab">参考曲线</span></div>
+          <div class="list">
+            <div class="row"><b>#0128</b><span>当前批次（埃塞 日晒 G1）</span></div>
+            <div class="row"><b>#0119</b><span>埃塞 日晒 G1 · 未命名批次</span></div>
+            <div class="row"><b>#0113</b><span>哥伦比亚 水洗 · 未命名批次</span></div>
+            <div class="row"><b>参考</b><span>profile: 基准曲线 #7</span></div>
+          </div>
+          <button class="btn primary" style="width:100%;margin-top:10px">开始对比</button>
+        </div>
+        <div class="card">
+          <h3>批次档案操作</h3>
+          <button class="btn" style="width:100%;margin-bottom:7px">📂 打开烘焙档案（*.hbroast）</button>
+          <button class="btn" style="width:100%;margin-bottom:7px">⬆ 导入 Artisan / Cropster CSV</button>
+          <button class="btn" style="width:100%;margin-bottom:7px">★ 当前批次存为参考曲线</button>
+          <button class="btn" style="width:100%;margin-bottom:7px">🖼 设为背景曲线（叠加到工作台）</button>
+          <button class="btn" style="width:100%">✕ 清除背景曲线</button>
+          <div class="note" style="margin-top:9px">存为参考曲线时弹出名称 + 备注输入；参考曲线可导出 JSON，背景曲线状态影响工作台 PDF 导出可用性 —— 均与原版一致。</div>
+        </div>
+      </div>
+      <!-- 右：对比图表 -->
+      <div class="chart-zone">
+        <div class="chart-card">
+          <div class="legend"><span><i style="background:#2ca02c"></i>Current BT</span><span><i style="background:#d62728"></i>Target BT</span><span><i style="background:#ff7f0e"></i>Current ET</span><span><i style="background:#9467bd"></i>Target ET</span></div>
+          <svg viewBox="0 0 920 260" xmlns="http://www.w3.org/2000/svg">
+            <g class="grid-l">
+              <line x1="70" y1="230" x2="900" y2="230"/><line x1="70" y1="173" x2="900" y2="173"/><line x1="70" y1="115" x2="900" y2="115"/><line x1="70" y1="58" x2="900" y2="58"/><line x1="70" y1="0" x2="900" y2="0"/>
+              <line x1="70" y1="0" x2="70" y2="230"/><line x1="198" y1="0" x2="198" y2="230"/><line x1="326" y1="0" x2="326" y2="230"/><line x1="454" y1="0" x2="454" y2="230"/><line x1="582" y1="0" x2="582" y2="230"/><line x1="710" y1="0" x2="710" y2="230"/><line x1="838" y1="0" x2="838" y2="230"/>
+            </g>
+            <text class="axis-lb" x="10" y="234">0</text><text class="axis-lb" x="2" y="177">100</text><text class="axis-lb" x="2" y="119">150</text><text class="axis-lb" x="2" y="62">200</text><text class="axis-lb" x="2" y="8">250</text>
+            <text class="axis-lb" x="66" y="254">0</text><text class="axis-lb" x="318" y="254">180s</text><text class="axis-lb" x="574" y="254">360s</text><text class="axis-lb" x="826" y="254">540s</text>
+            <path d="M70,76 C100,150 130,168 170,160 C240,145 320,120 420,100 C520,82 640,66 900,48" fill="none" stroke="#2ca02c" stroke-width="2.6"/>
+            <path d="M70,72 C100,146 130,166 170,157 C240,142 320,118 420,99 C520,80 640,62 900,42" fill="none" stroke="#d62728" stroke-width="2" stroke-dasharray="6 4"/>
+            <path d="M70,124 C110,180 160,180 220,160 C320,130 460,108 620,92 C740,80 830,72 900,66" fill="none" stroke="#ff7f0e" stroke-width="2"/>
+            <path d="M70,120 C110,176 160,177 220,156 C320,126 460,104 620,88 C740,76 830,68 900,62" fill="none" stroke="#9467bd" stroke-width="1.8" stroke-dasharray="6 4"/>
+          </svg>
+          <div class="legend" style="margin-top:6px"><span><i style="background:#2ca02c"></i>Current BT RoR</span><span><i style="background:#d62728"></i>Target BT RoR</span></div>
+          <svg viewBox="0 0 920 120" xmlns="http://www.w3.org/2000/svg">
+            <g class="grid-l">
+              <line x1="70" y1="100" x2="900" y2="100"/><line x1="70" y1="50" x2="900" y2="50"/><line x1="70" y1="0" x2="900" y2="0"/>
+              <line x1="70" y1="0" x2="70" y2="100"/><line x1="454" y1="0" x2="454" y2="100"/><line x1="838" y1="0" x2="838" y2="100"/>
+            </g>
+            <path d="M100,18 C180,55 280,72 400,80 C520,86 660,90 900,92" fill="none" stroke="#2ca02c" stroke-width="2.2"/>
+            <path d="M100,22 C180,58 280,74 400,82 C520,88 660,92 900,94" fill="none" stroke="#d62728" stroke-width="1.8" stroke-dasharray="6 4"/>
+          </svg>
+          <!-- 指标 -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:10px 4px 4px">
+            <div class="mcard"><div class="lb">豆温平均绝对偏差</div><div class="vl">2.41<small> °C</small></div></div>
+            <div class="mcard"><div class="lb">重叠时长</div><div class="vl">652<small> 秒</small></div></div>
+            <div class="mcard"><div class="lb">当前批次发展比例</div><div class="vl">21.3<small> %</small></div><div class="sub">一爆 428s · 排豆 672s</div></div>
+            <div class="mcard"><div class="lb">目标曲线发展比例</div><div class="vl">19.8<small> %</small></div><div class="sub">一爆 415s · 排豆 655s</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREEN 7 ═══════════════ -->
+<section class="screen" id="s7">
+  <div class="screen-h"><h1>⑦ 曲线分析 · 批次信息 · 导出中心</h1><span class="sub">原"曲线分析"消息框升级为分析面板；CSV/JSON/报告/PDF 四类导出集中管理</span></div>
+  <p class="desc">对应原 _show_analysis（RoR 范围、RoR 下坠/上扬次数、发展期、事件与操作统计）、BatchInfoDialog（设备/操作者/咖啡名称/生豆熟豆重量）与 _export_data（CSV 采样、JSON 全量、.report.txt 报告、图表 PDF）。导出可用性规则不变：图表 PDF 需已加载背景/参考曲线或当前烘焙已结束。</p>
+  <div class="tags"><span class="tag">原:analyze_roast</span><span class="tag">原:BatchInfoDialog</span><span class="tag">原:_export_data / export_samples / export_roast_json / build_report</span><span class="tag">原:_export_current_chart_pdf / export_chart_pdf</span><span class="tag">原:development_metrics</span></div>
+
+  <div class="dlg-wrap">
+    <div class="dlg" style="max-width:520px;min-width:440px">
+      <div class="hd">烘焙曲线分析 <span class="tag">原:analyze_roast</span></div>
+      <div class="bd">
+        <div class="kv"><span>BT RoR 范围</span><b>3.2 至 34.6 °C/min</b></div>
+        <div class="kv"><span>RoR 明显下坠</span><b>2 次 · 建议结合人工操作记录复盘</b></div>
+        <div class="kv"><span>RoR 明显上扬</span><b>1 次 · 建议检查末段火力和风门变化</b></div>
+        <div class="kv"><span>发展阶段</span><b>244 s，占总烘焙时间 21.3%</b></div>
+        <div class="kv"><span>事件 / 人工操作</span><b>7 个事件 · 12 条操作</b></div>
+        <p class="hint" style="margin-top:10px">样本不足（&lt;12 点）时提示："样本不足，至少采集 12 个点后再进行曲线分析。"（原版一致）</p>
+        <p class="hint">未完整记录 FC_START 与 DROP 时提示无法计算发展比例。（原版一致）</p>
+      </div>
+    </div>
+
+    <div class="dlg">
+      <div class="hd">批次信息 <span class="tag">原:BatchInfoDialog</span></div>
+      <div class="bd">
+        <div class="frm">
+          <label>设备</label><input class="inp" value="HB Model S · COM3">
+          <label>操作者</label><input class="inp" value="pcz">
+          <label>咖啡名称</label><input class="inp" value="埃塞俄比亚 日晒 G1">
+          <label>生豆重量(g)</label><input class="inp" value="1000.0">
+          <label>熟豆重量(g)</label><input class="inp" value="880.0">
+        </div>
+        <p class="hint" style="margin-top:10px">保存提示「批次信息已保存」；失重率 = 12.0%（新增展示，不改数据）</p>
+      </div>
+      <div class="ft"><button class="btn">取消</button><button class="btn primary">保存</button></div>
+    </div>
+
+    <div class="dlg">
+      <div class="hd">导出中心 <span class="tag">原:_export_data</span></div>
+      <div class="bd">
+        <button class="btn" style="width:100%;margin-bottom:7px">⬇ 导出 CSV（采样数据 *.csv）</button>
+        <button class="btn" style="width:100%;margin-bottom:7px">⬇ 导出 JSON（批次全量 *.json）</button>
+        <button class="btn" style="width:100%;margin-bottom:7px">⬇ 导出文本报告（*.report.txt）</button>
+        <button class="btn gold" style="width:100%;margin-bottom:7px">⬇ 导出当前图表 PDF（HB 烘焙图表）</button>
+        <div class="note">PDF 导出条件：已加载背景/参考曲线 <em>或</em> 当前烘焙已结束（原 _update_chart_pdf_availability 规则）；无数据导出时提示"当前批次还没有可导出的采样数据。"。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREEN 8 ═══════════════ -->
+<section class="screen" id="s8">
+  <div class="screen-h"><h1>⑧ 通道映射与调试诊断</h1><span class="sub">设备通道配置 · 会话调试日志 · 诊断包导出</span></div>
+  <p class="desc">对应原 _edit_channel_mapping（CH1–CH4 → WORK/AMBIENT 映射，含通道 1-4 与英文键显示）与调试体系：SessionDebugLogger 记录原始帧、串口命令、状态事件、解析错误与采样质量门拒绝记录；支持打开日志目录与导出 ZIP 诊断包。</p>
+  <div class="tags"><span class="tag">原:ChannelMapper / channel.json</span><span class="tag">原:_edit_channel_mapping</span><span class="tag">原:SessionDebugLogger</span><span class="tag">原:_open_debug_log_dir / _export_debug_bundle</span><span class="tag">原:_on_parse_error_detail / SampleQualityGate</span></div>
+
+  <div class="dlg-wrap">
+    <div class="dlg">
+      <div class="hd">温度通道映射 <span class="tag">原:_edit_channel_mapping</span></div>
+      <div class="bd">
+        <div class="frm">
+          <label>通道 1 (CH1)</label><select class="inp"><option selected>WORK</option><option>AMBIENT</option></select>
+          <label>通道 2 (CH2)</label><select class="inp"><option>WORK</option><option selected>AMBIENT</option></select>
+          <label>通道 3 (CH3)</label><select class="inp"><option>WORK</option><option>AMBIENT</option></select>
+          <label>通道 4 (CH4)</label><select class="inp"><option>WORK</option><option>AMBIENT</option></select>
+        </div>
+        <p class="hint" style="margin-top:10px">保存后写入 config/channel.json，提示「通道映射已更新」。通道无效的帧将被忽略并计入调试日志。</p>
+      </div>
+      <div class="ft"><button class="btn">取消</button><button class="btn primary">保存映射</button></div>
+    </div>
+
+    <div class="dlg" style="max-width:520px;min-width:440px">
+      <div class="hd">调试诊断 <span class="tag">原:SessionDebugLogger</span></div>
+      <div class="bd">
+        <div class="kv"><span>当前会话日志</span><b class="code">roast_debug_20260827_0014.jsonl</b></div>
+        <div class="kv"><span>记录内容</span><b>原始帧 / 串口命令 / 状态事件 / 解析错误 / 采样拒绝</b></div>
+        <div class="kv"><span>本会话忽略帧</span><b>3 帧（通道映射无效 ×1，异常采样 ×2）</b></div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <button class="btn">📂 打开调试日志目录</button>
+          <button class="btn">🗜 导出调试诊断包（ZIP）</button>
+        </div>
+        <div class="note" style="margin-top:12px">无运行中会话且日志目录为空时提示"当前无运行中的调试会话，且日志目录中无可打包文件"；导出成功后自动打开所在目录（原版行为）。</div>
+      </div>
+    </div>
+
+    <div class="dlg">
+      <div class="hd">采异常提示样例 <span class="tag">原:_on_parse_error / _on_sample_raw</span></div>
+      <div class="bd">
+        <div class="kv"><span>解析错误</span><b>状态栏滚动提示 + 日志 detail</b></div>
+        <div class="kv"><span>已忽略采集帧</span><b>温度通道无效</b></div>
+        <div class="kv"><span>已忽略异常采样</span><b>SampleQualityGate 拒绝</b></div>
+        <p class="hint" style="margin-top:10px">所有异常均不中断采集，仅剔除该帧并记录原因，保证曲线连续性 —— 与原版"拒绝不可信读数而不修改已接受数据"的策略一致。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /main -->
+
+<script>
+// 屏幕切换
+const btns=document.querySelectorAll('#nav button[data-s]');
+const screens=document.querySelectorAll('.screen');
+btns.forEach(b=>b.addEventListener('click',()=>{
+  btns.forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  screens.forEach(s=>s.classList.toggle('on',s.id===b.dataset.s));
+  window.scrollTo(0,0);
+}));
+// 主题切换（保留原版"深色/浅色工作台"双主题概念）
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  const h=document.documentElement;
+  h.dataset.theme=h.dataset.theme==='light'?'':'light';
+});
+</script>
+</body>
+</html>

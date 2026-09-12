@@ -1,0 +1,27 @@
+# UTF-8
+VSVersionInfo(
+  ffi=FixedFileInfo(
+        filevers=@VERSION_TUPLE@,
+        prodvers=@VERSION_TUPLE@,
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable('080404B0', [
+        StringStruct('CompanyName', 'HB'),
+        StringStruct('FileDescription', '烘焙软件'),
+        StringStruct('FileVersion', '@APP_VERSION@'),
+        StringStruct('InternalName', '烘焙软件'),
+        StringStruct('OriginalFilename', '烘焙软件-@APP_VERSION@.exe'),
+        StringStruct('ProductName', '烘焙软件'),
+        StringStruct('ProductVersion', '@APP_VERSION@')
+      ])
+    ]),
+    VarFileInfo([VarStruct('Translation', [2052, 1200])])
+  ]
+)

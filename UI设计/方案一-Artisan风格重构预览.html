@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方案一 · Artisan 风格重构预览 — 工匠工作站</title>
+<style>
+/* ═══════════ 设计令牌（Design Tokens）═══════════ */
+:root{
+  --bg:#1f2023; --panel:#282a2e; --panel2:#323438;
+  --line:#3d4046; --line-soft:#33363b;
+  --txt:#e9e7e2; --dim:#a6a49e; --faint:#7d7b76;
+  --accent:#f0a83f; --accent-dim:#c98a2e; --accent-soft:rgba(240,168,63,.14);
+  --bt:#ffa03a; --et:#54cbe8; --ror:#c98bf0; --bg-curve:#8a8d93;
+  --btn:#3a3d42; --btn-h:#46494f;
+  --ok:#6fce7f; --danger:#e6646a;
+  --lcd-bg:#141519; --lcd-on:#ffb648;
+  --track:#45484e;
+  --mono:"Cascadia Code",Consolas,"Courier New",monospace;
+  --radius:8px; --radius-s:6px;
+  --shadow:0 1px 2px rgba(0,0,0,.28),0 2px 10px rgba(0,0,0,.16);
+  --shadow-lift:0 2px 4px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.22);
+  --t-fast:.14s ease;
+}
+html.light{
+  --bg:#eceae4; --panel:#f9f7f2; --panel2:#efece5;
+  --line:#d6d2c8; --line-soft:#e2ded4;
+  --txt:#2b2b28; --dim:#78756d; --faint:#98948b;
+  --accent:#d98a1d; --accent-dim:#b5740f; --accent-soft:rgba(217,138,29,.12);
+  --bg-curve:#9a968c; --btn:#e6e2d9; --btn-h:#efece4;
+  --lcd-bg:#17181b; --lcd-on:#ffb648;
+  --track:#d6d2c8;
+  --shadow:0 1px 2px rgba(70,58,32,.07),0 2px 10px rgba(70,58,32,.06);
+  --shadow-lift:0 2px 6px rgba(70,58,32,.1),0 8px 22px rgba(70,58,32,.09);
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI","Microsoft YaHei",sans-serif;}
+body{background:var(--bg);color:var(--txt);font-size:13px;-webkit-font-smoothing:antialiased;}
+::selection{background:var(--accent-soft);}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--btn);border-radius:5px;border:2px solid var(--bg);}
+::-webkit-scrollbar-thumb:hover{background:var(--btn-h);}
+::-webkit-scrollbar-track{background:transparent;}
+button{font-family:inherit;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+
+/* ═══════════ 布局骨架与间距节奏（4/8/12 网格）═══════════ */
+.screen{display:none;min-height:100vh;padding:12px 14px 20px;}
+.screen.active{display:block;}
+.workspace{display:flex;gap:10px;align-items:stretch;}
+.col-left{width:132px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;}
+.col-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;}
+.col-right{width:236px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ═══════════ 顶部导航 ═══════════ */
+.topnav{display:flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:7px 12px;margin-bottom:10px;flex-wrap:wrap;box-shadow:var(--shadow);}
+.topnav .logo{font-weight:700;color:var(--accent);margin-right:12px;font-size:14px;letter-spacing:.5px;}
+.topnav .logo::before{content:"";display:inline-block;width:3px;height:14px;border-radius:2px;background:var(--accent);margin-right:8px;vertical-align:-2px;}
+.topnav button{background:transparent;color:var(--dim);border:1px solid transparent;border-radius:var(--radius-s);padding:5px 13px;cursor:pointer;font-size:12.5px;transition:color var(--t-fast),background var(--t-fast);}
+.topnav button:hover{color:var(--txt);background:var(--panel2);}
+.topnav button.on{background:var(--accent);color:#231a08;border-color:var(--accent);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.topnav .spacer{flex:1;}
+/* 菜单栏（屏1 第二行） */
+.mitem{padding:3px 9px;border-radius:4px;font-size:12.5px;color:var(--dim);cursor:default;transition:background var(--t-fast),color var(--t-fast);}
+.mitem:hover{background:var(--panel2);color:var(--txt);}
+.msep{color:var(--line);margin:0 1px;}
+
+/* ═══════════ 排版层级 ═══════════ */
+h2.scr-title{font-size:18px;font-weight:700;margin:6px 0 10px;color:var(--txt);letter-spacing:.3px;}
+h2.scr-title .badge{vertical-align:3px;margin-left:8px;}
+.desc{color:var(--dim);font-size:12.5px;margin-bottom:12px;line-height:1.8;max-width:1020px;}
+.note{font-size:11px;color:var(--faint);margin-top:6px;line-height:1.6;}
+kbd{background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 5px;font-size:10.5px;font-family:var(--mono);color:var(--txt);}
+.callout{border-left:3px solid var(--accent);background:var(--panel2);padding:10px 14px;border-radius:0 var(--radius-s) var(--radius-s) 0;margin:10px 0;font-size:12.5px;line-height:1.8;}
+.badge{display:inline-block;font-size:10.5px;font-weight:600;background:rgba(111,206,127,.14);color:#9fdcac;border-radius:10px;padding:2px 9px;margin-left:6px;vertical-align:middle;white-space:nowrap;letter-spacing:.3px;}
+.badge.src{background:rgba(84,203,232,.13);color:#8fd4ec;}
+html.light .badge{color:#4f8f5d;} html.light .badge.src{color:#3d7f9c;}
+
+/* ═══════════ LCD 数字屏 ═══════════ */
+.lcd-strip{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:stretch;}
+.lcd{background:linear-gradient(180deg,#1b1c21 0%,var(--lcd-bg) 100%);border:1px solid #000;border-radius:var(--radius-s);padding:8px 12px;min-width:106px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),var(--shadow);transition:transform var(--t-fast);}
+.lcd:hover{transform:translateY(-1px);}
+.lcd .lab{color:#8b877c;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;}
+.lcd .val{font-family:var(--mono);font-size:23px;color:var(--lcd-on);font-weight:700;text-align:right;line-height:1.25;text-shadow:0 0 12px rgba(255,182,72,.35);font-variant-numeric:tabular-nums;}
+.lcd .sub{color:#5f5c54;font-size:10px;text-align:right;letter-spacing:.5px;}
+.lcd.et .val{color:#54cbe8;text-shadow:0 0 12px rgba(84,203,232,.35);}
+.lcd.ror .val{color:#c98bf0;text-shadow:0 0 12px rgba(201,139,240,.35);}
+.lcd.time .val{color:#6fce7f;text-shadow:0 0 12px rgba(111,206,127,.35);}
+.lcd.inlet .val{color:#5ba8e0;text-shadow:0 0 12px rgba(91,168,224,.35);}
+.lcd.exhaust .val{color:#e89b5a;text-shadow:0 0 12px rgba(232,155,90,.35);}
+
+/* ═══════════ 面板 ═══════════ */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);}
+.panel h3{font-size:12px;font-weight:600;color:var(--accent);letter-spacing:.8px;border-bottom:1px solid var(--line-soft);padding-bottom:7px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;}
+
+/* ═══════════ 滑杆 / 手动档位控件 ═══════════ */
+.slider-block{margin-bottom:13px;}
+.slider-block .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--dim);margin-bottom:5px;font-weight:600;}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:var(--track);cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2.5px solid var(--panel);box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .1s ease;}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15);}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2.5px solid var(--panel);box-shadow:0 1px 4px rgba(0,0,0,.45);}
+.gear-slider.damp::-webkit-slider-thumb{background:#3fb6c9;}
+.gear-slider.drum::-webkit-slider-thumb{background:#9d7bdc;}
+.gear-slider.damp::-moz-range-thumb{background:#3fb6c9;}
+.gear-slider.drum::-moz-range-thumb{background:#9d7bdc;}
+.gear-val{font-family:var(--mono);color:var(--lcd-on);font-size:12.5px;font-weight:700;}
+.gear-ticks{display:flex;justify-content:space-between;font-size:9.5px;color:var(--faint);padding:2px 7px 0;font-family:var(--mono);}
+.manual-note{border:1px dashed var(--line);border-radius:var(--radius-s);padding:7px 9px;font-size:10.5px;color:var(--dim);line-height:1.7;margin-top:8px;background:var(--accent-soft);}
+.step-btn{padding:4px 11px;border-radius:var(--radius-s);border:1px solid var(--line);background:var(--btn);color:var(--txt);cursor:pointer;font-size:13px;font-family:var(--mono);line-height:1.2;transition:background var(--t-fast),border-color var(--t-fast),transform .1s;}
+.step-btn:hover{background:var(--btn-h);border-color:var(--accent);transform:translateY(-1px);}
+.step-btn:active{transform:translateY(0);}
+
+/* ═══════════ 图表与图例 ═══════════ */
+.chart-wrap{background:var(--lcd-bg);border-radius:var(--radius);overflow:hidden;position:relative;box-shadow:var(--shadow);border:1px solid #000;}
+canvas{display:block;width:100%;}
+.axis-note{font-size:11px;color:var(--dim);padding:6px 10px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+.lg{display:inline-flex;align-items:center;gap:5px;}
+.lg i{width:16px;height:3px;border-radius:2px;display:inline-block;}
+
+/* ═══════════ 事件按钮条 ═══════════ */
+.event-strip{display:flex;gap:7px;flex-wrap:wrap;}
+.ev{border:1px solid var(--line);background:var(--btn);color:var(--txt);border-radius:var(--radius-s);padding:9px 14px;cursor:pointer;font-size:12px;font-weight:600;position:relative;text-align:center;line-height:1.35;transition:background var(--t-fast),border-color var(--t-fast),transform .1s,box-shadow var(--t-fast);}
+.ev small{display:block;color:var(--dim);font-size:9.5px;font-weight:400;margin-top:2px;letter-spacing:.2px;}
+.ev:hover{background:var(--btn-h);transform:translateY(-1px);box-shadow:var(--shadow);}
+.ev.recorded{background:linear-gradient(180deg,rgba(240,168,63,.22),rgba(240,168,63,.12));border-color:var(--accent);color:var(--lcd-on);}
+.ev.recorded::before{content:"";position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);}
+.ev.pending{border-style:dashed;color:var(--faint);background:transparent;}
+.ev.pending:hover{border-color:var(--accent-dim);color:var(--dim);}
+.ev.drop-locked{background:rgba(230,100,106,.14);border-color:var(--danger);color:#f0a3a7;cursor:not-allowed;}
+.ev.drop-locked:hover{transform:none;box-shadow:none;}
+
+/* ═══════════ 电源按钮 / 通用按钮 ═══════════ */
+.power-btns{display:flex;gap:6px;}
+.pbtn{padding:9px 15px;border-radius:var(--radius-s);border:1px solid var(--line);font-weight:700;cursor:pointer;font-size:12px;color:var(--txt);background:var(--btn);transition:background var(--t-fast),border-color var(--t-fast),transform .1s,box-shadow var(--t-fast);line-height:1.4;}
+.pbtn:hover{background:var(--btn-h);border-color:var(--accent-dim);transform:translateY(-1px);box-shadow:var(--shadow);}
+.pbtn:active{transform:translateY(0);}
+.pbtn.on-live{background:rgba(111,206,127,.16);border-color:var(--ok);color:#a5e3ab;}
+.pbtn.rec{background:rgba(230,100,106,.15);border-color:var(--danger);color:#f2a8ac;}
+.pbtn:disabled{opacity:.45;cursor:not-allowed;}
+
+/* ═══════════ 表格 ═══════════ */
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border:1px solid var(--line);border-radius:var(--radius-s);overflow:hidden;}
+th,td{border-bottom:1px solid var(--line-soft);border-right:1px solid var(--line-soft);padding:7px 10px;text-align:left;vertical-align:top;}
+tr td:last-child,tr th:last-child{border-right:none;}
+tr:last-child td{border-bottom:none;}
+th{background:var(--panel2);color:var(--accent);font-weight:600;font-size:11.5px;letter-spacing:.5px;}
+tbody tr:hover td,tr:hover td{background:var(--panel2);}
+td .b{display:inline-block;margin:1px 2px 1px 0;}
+ul.compact{margin:6px 0 0 18px;line-height:1.9;font-size:12.5px;}
+
+/* ═══════════ 各类小组件 ═══════════ */
+.legend-box{font-size:11.5px;line-height:2.1;}
+.legend-box .row{display:flex;justify-content:space-between;gap:8px;}
+.legend-box .row b{font-family:var(--mono);color:var(--txt);}
+label{cursor:pointer;}
+input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;vertical-align:-2px;margin-right:4px;cursor:pointer;}
+input[type=text],input:not([type]){background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--txt);padding:4px 7px;font-size:12px;font-family:var(--mono);}
+input:focus{border-color:var(--accent);outline:none;}
+select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:4px;padding:4px 7px;cursor:pointer;}
+.tag{font-size:10px;border:1px solid var(--line);border-radius:10px;padding:1px 8px;color:var(--faint);white-space:nowrap;font-weight:400;letter-spacing:.3px;}
+.alarm-item{border-left:3px solid var(--accent);background:var(--accent-soft);padding:5px 9px;margin-bottom:5px;font-size:11.5px;border-radius:0 var(--radius-s) var(--radius-s) 0;line-height:1.6;}
+.statusbar{display:flex;gap:0;font-size:11px;color:var(--dim);padding:7px 6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-top:10px;flex-wrap:wrap;box-shadow:var(--shadow);}
+.statusbar>span{display:inline-flex;align-items:center;padding:2px 13px;border-right:1px solid var(--line-soft);}
+.statusbar>span:last-child{border-right:none;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;animation:pulse 2.2s infinite;}
+.dot.off{background:var(--danger);}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(111,206,127,.45);}55%{box-shadow:0 0 0 5px rgba(111,206,127,0);}}
+.tabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:5px;box-shadow:var(--shadow);}
+.tabs button{background:transparent;color:var(--dim);border:none;border-radius:var(--radius-s);padding:6px 16px;cursor:pointer;font-size:12px;transition:background var(--t-fast),color var(--t-fast);}
+.tabs button:hover{color:var(--txt);background:var(--panel2);}
+.tabs button.on{background:var(--accent);color:#231a08;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+
+/* ═══════════ Toast 反馈 ═══════════ */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#141519;color:#ffd88a;border:1px solid var(--accent);padding:10px 22px;border-radius:var(--radius);display:none;z-index:99;font-size:12.5px;box-shadow:var(--shadow-lift);animation:toastIn .22s ease;}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 屏0：方案说明与功能映射 ═══════════ -->
+<div class="screen active" id="scr0">
+  <div class="topnav">
+    <span class="logo">方案一 · Artisan 风格「工匠工作站」</span>
+    <button class="on" onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙主屏</button>
+    <button onclick="go(2,this)">设计/对比模式</button>
+    <button onclick="go(3,this)">回放与标注</button>
+    <button onclick="go(4,this)">配置中心</button>
+    <button onclick="go(5,this)">批次档案</button>
+    <span class="spacer"></span>
+    <button onclick="document.documentElement.classList.toggle('light')">☀/🌙 主题</button>
+  </div>
+
+  <h2 class="scr-title">方案一：Artisan 风格重构 — 「工匠工作站」</h2>
+  <div class="desc">
+    本方案完整借鉴 Artisan 的<b>专业工作站式布局</b>：顶部菜单 + 右上角设备电源按钮组（ON/START/OFF/RESET）、
+    LCD 数字读数带、中央大图表（左轴温度 / 右轴 RoR）、底部事件按钮条、左侧机台手动操作面板（燃气压力 mbar + 风门/转速独立 10 档，仅记录）、右侧曲线图例/背景曲线/报警面板。
+    视觉风格采用 Artisan 标志性的<b>深色高密度桌面软件质感</b>与等宽数字 LCD，强调"一屏掌控全部参数"。
+  </div>
+
+  <div class="callout"><b>借鉴 Artisan 的关键交互模式：</b>
+    ① 设备电源按钮组（ON→START→烘焙→OFF→RESET 生命周期）② 底部横向事件按钮条（录制态视觉反馈）③ LCD 读数带（温度/RoR/阶段时间）④ 左侧机台控制滑杆（Artisan 的 Power/Fan 滑杆）⑤ 背景参考曲线叠加 ⑥ 事件标注（在曲线上显示燃气/风门变化注释）⑦ 报警条（Artisan Alarms）⑧ 模式分离（烘焙模式 / 设计模式）⑨ 键盘快捷键体系
+  </div>
+
+  <div class="callout" style="border-left-color:var(--danger);"><b>机器实际规格适配（本版调整，以此为准）：</b>
+    ① <b>纯手动设备</b>：软件不含任何自动控制逻辑，不存在预热/程序自动等模式；② <b>燃气压力统一以 mbar 为单位</b>处理与显示（LCD 读数 + 0.5 mbar 步进调节）；③ <b>风门开度与滚筒转速为两个相互独立的手动参数</b>，各自划分为第 1 档～第 10 档共 10 档，可分别单独调节、互不影响；④ 所有控制操作均由操作人员<b>手动触发</b>，软件<b>仅记录操作</b>（写入操作记录并生成曲线标注），不向设备发送任何控制指令。
+  </div>
+
+  <h2 class="scr-title" style="margin-top:18px;">功能完整性映射总表<span class="badge">原程序功能逐项核对</span></h2>
+  <table>
+    <tr><th style="width:26%">原功能模块</th><th style="width:34%">原功能点</th><th>方案一落位（屏号·区域）</th></tr>
+    <tr><td>MainWindow 主窗口</td><td>21 项工具栏动作（连接/开始/结束/撤销重录/保存/导出/对比/回放/设置等）</td><td>菜单栏 + 右上电源按钮组 + 屏2/3/5 入口，动作全保留</td></tr>
+    <tr><td rowspan="3">CurveWidget 曲线图表</td><td>12 条曲线（IT/ET/BT/背景/三路RoR/RoR预测/燃气压力mbar/风门档位/转速档位）</td><td>主屏中央图表 + 右栏图例（可逐条开关），曲线数不变</td></tr>
+    <tr><td>左轴温度 / 右轴 RoR 双轴、网格、缩放</td><td>同 Artisan 双轴布局，坐标轴设置见屏4</td></tr>
+    <tr><td>里程碑预测线、事件竖线标注</td><td>图内虚线 + ETA 气泡（对应原 milestone_forecast）</td></tr>
+    <tr><td rowspan="2">指标卡（7 组）</td><td>豆温/风温/时间/RoR/发展期/回温点/采样质量</td><td>顶部 LCD 读数带（Artisan LCD 式呈现）；本方案顶部以「进风温·排风温」替换「燃气压力·采样质量」位（燃气压力移至左栏机台操作面板，采样质量见屏5 批次分析）</td></tr>
+    <tr><td>里程碑 ETA（转黄/一爆预测）</td><td>右栏「里程碑预测」面板 + 图内预测虚线</td></tr>
+    <tr><td rowspan="2">EventPanel 事件面板</td><td>8 类事件按钮（CHARGE/TP/YELLOW/FC_START/FC_END/SC_START/SC_END/DROP）</td><td>底部事件按钮条（Artisan 式），三态：待录/已录/DROP锁定</td></tr>
+    <tr><td>撤销/重录、DROP 后锁定</td><td>按钮右键菜单 + <kbd>Z</kbd> 撤销，锁定态置灰（屏1 底部交互图解）</td></tr>
+    <tr><td>ActionPanel 操作面板</td><td>人工操作记录（燃气压力 mbar / 风门档位 / 转速档位 / 备注），软件仅记录、不控制设备</td><td>左栏「机台手动操作」+ 右侧「操作记录」面板 + 曲线事件标注（Artisan Event Annotations）</td></tr>
+    <tr><td>TargetPanel 目标面板</td><td>目标转黄/一爆时间与温度</td><td>右栏「目标与偏差」面板</td></tr>
+    <tr><td>设备连接</td><td>串口连接、三协议、断线自动重连</td><td>菜单「设备」+ 状态栏连接指示灯（屏1 底部）</td></tr>
+    <tr><td>ReplayWindow 回放</td><td>曲线回放、倍速、滑杆</td><td>屏3「回放与标注」（设计模式回放，Artisan 式）</td></tr>
+    <tr><td>CompareWindow 对比</td><td>多批次曲线叠加对比</td><td>屏2「设计/对比模式」（Artisan Comparator 理念）</td></tr>
+    <tr><td>批次/分析/导出</td><td>批次信息、曲线分析指标、CSV/JSON/txt/PDF 导出</td><td>屏5「批次档案」+ 分析表</td></tr>
+    <tr><td>三个设置对话框</td><td>坐标轴/显示设置/曲线可见性线宽/双主题</td><td>屏4「配置中心」（Artisan Config 菜单式分区）</td></tr>
+    <tr><td>通道映射/调试</td><td>CH1-4 映射、调试日志、诊断包</td><td>屏4 配置中心 → 设备页 + 菜单「帮助→诊断」</td></tr>
+  </table>
+  <div class="note">核对基准：与《烘焙软件UI重构预览.html》第 0 屏功能清单一致，21+7+12+8 全量保留，仅改变呈现方式。</div>
+</div>
+
+<!-- ═══════════ 屏1：烘焙主屏 ═══════════ -->
+<div class="screen" id="scr1">
+  <div class="topnav">
+    <span class="logo">工匠工作站</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button class="on" onclick="go(1,this)">烘焙主屏</button>
+    <button onclick="go(2,this)">设计/对比模式</button>
+    <button onclick="go(3,this)">回放与标注</button>
+    <button onclick="go(4,this)">配置中心</button>
+    <button onclick="go(5,this)">批次档案</button>
+    <span class="spacer"></span>
+    <button onclick="document.documentElement.classList.toggle('light')">☀/🌙 主题</button>
+  </div>
+
+  <!-- 菜单栏（Artisan 式完整菜单） -->
+  <div class="topnav" style="padding:4px 12px;">
+    <b style="color:var(--accent);margin-right:10px;font-size:12px;">菜单</b>
+    <span class="mitem">文件</span><span class="msep">|</span>
+    <span class="mitem">烘焙</span><span class="msep">|</span>
+    <span class="mitem">配置</span><span class="msep">|</span>
+    <span class="mitem">工具</span><span class="msep">|</span>
+    <span class="mitem">帮助</span>
+    <span class="spacer"></span>
+    <span class="tag">原：MainWindow 21项工具栏动作 → 分级菜单收纳</span>
+  </div>
+
+  <!-- LCD 读数带 + 电源按钮组 -->
+  <div class="lcd-strip">
+    <div class="lcd et"><div class="lab">ET 风温 ℃</div><div class="val" id="lcd-et">186.4</div><div class="sub">通道 CH1</div></div>
+    <div class="lcd"><div class="lab">BT 豆温 ℃</div><div class="val" id="lcd-bt">152.8</div><div class="sub">通道 CH2</div></div>
+    <div class="lcd ror"><div class="lab">RoR ℃/min</div><div class="val" id="lcd-ror">12.6</div><div class="sub">Δ30s</div></div>
+    <div class="lcd time"><div class="lab">时间</div><div class="val" id="lcd-t">07:42</div><div class="sub">录制中</div></div>
+    <div class="lcd"><div class="lab">回温点 TP</div><div class="val">92.1</div><div class="sub">01:15 · 自动</div></div>
+    <div class="lcd"><div class="lab">发展期 DTR</div><div class="val">18.2%</div><div class="sub">FC起 · 03:10</div></div>
+    <div class="lcd inlet"><div class="lab">进风温 ℃</div><div class="val">176.2</div><div class="sub">通道 CH3</div></div>
+    <div class="lcd exhaust"><div class="lab">排风温 ℃</div><div class="val">198.7</div><div class="sub">通道 CH4</div></div>
+    <div style="flex:1"></div>
+    <div class="power-btns" style="align-items:flex-start;">
+      <button class="pbtn on-live" id="pb-on">ON<br><small style="font-weight:400;color:#a5e3ab">采集已连接</small></button>
+      <button class="pbtn rec" id="pb-start" onclick="toast('START：开始录制（对应原 _start_roast）')">START<br><small style="font-weight:400">开始烘焙</small></button>
+      <button class="pbtn" onclick="toast('OFF：结束录制 → 进入批次保存流程')">OFF<br><small style="font-weight:400">结束</small></button>
+      <button class="pbtn" onclick="toast('RESET：清空当前曲线与背景，准备下一锅')">RESET<br><small style="font-weight:400">重置</small></button>
+    </div>
+  </div>
+  <div class="note" style="margin:-5px 0 9px 4px;">借鉴 Artisan：右上角 ON / START / OFF / RESET 电源按钮组 = 烘焙会话完整生命周期（原：连接设备/开始/结束/重置四个状态）。</div>
+
+  <!-- 主工作区 -->
+  <div class="workspace">
+    <!-- 左：机台手动操作（纯手动 · 仅记录，Artisan Power/Fan 滑杆位置） -->
+    <div class="col-left">
+      <div class="panel" style="flex:1;">
+        <h3>机台手动操作<span class="tag">原：操作面板 · 仅记录</span></h3>
+        <!-- 燃气压力（mbar） -->
+        <div class="slider-block">
+          <div class="lab"><span>燃气压力</span><b class="gear-val" id="v-gas">18.5 mbar</b></div>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <button class="step-btn" onclick="gasStep(-0.5)">−</button>
+            <input type="range" min="0" max="50" step="0.5" value="18.5" style="flex:1" oninput="gasShow(this.value)" onchange="gasSet(this.value)">
+            <button class="step-btn" onclick="gasStep(0.5)">＋</button>
+          </div>
+          <div class="note">0 – 50 mbar · 步进 0.5 mbar · 手动调节</div>
+        </div>
+        <!-- 风门开度（1-10 档，独立） -->
+        <div class="slider-block">
+          <div class="lab"><span>风门开度</span><b class="gear-val" id="v-damp">第 6 档</b></div>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <button class="step-btn" onclick="gearStep('damp',-1)">−</button>
+            <input type="range" min="1" max="10" step="1" value="6" class="gear-slider damp" style="flex:1" oninput="gearShow('damp',this.value)" onchange="gearSet('damp',+this.value)">
+            <button class="step-btn" onclick="gearStep('damp',1)">＋</button>
+          </div>
+          <div class="gear-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+          <div class="note">第 1 档 ～ 第 10 档 · 滑块拖动调节</div>
+        </div>
+        <!-- 滚筒转速（1-10 档，独立） -->
+        <div class="slider-block">
+          <div class="lab"><span>滚筒转速</span><b class="gear-val" id="v-drum">第 5 档</b></div>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <button class="step-btn" onclick="gearStep('drum',-1)">−</button>
+            <input type="range" min="1" max="10" step="1" value="5" class="gear-slider drum" style="flex:1" oninput="gearShow('drum',this.value)" onchange="gearSet('drum',+this.value)">
+            <button class="step-btn" onclick="gearStep('drum',1)">＋</button>
+          </div>
+          <div class="gear-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+          <div class="note">第 1 档 ～ 第 10 档 · 与风门互不影响</div>
+        </div>
+        <div class="manual-note">⚙ 纯手动设备：以上操作均由操作员手动触发，软件<b>仅记录</b>（写入操作记录 + 曲线标注），<b>不发送任何控制指令</b>；不含自动/程序模式。</div>
+      </div>
+      <div class="panel">
+        <h3>阶段计时<small style="color:var(--faint);font-weight:400">Phases</small></h3>
+        <div class="legend-box">
+          <div class="row"><span>脱水期</span><b>03:12</b></div>
+          <div class="row"><span>美拉德期</span><b>03:20</b></div>
+          <div class="row"><span>发展期</span><b id="ph-dev">01:10</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中：大图表 -->
+    <div class="col-mid">
+      <div class="chart-wrap">
+        <canvas id="chart1" height="430"></canvas>
+      </div>
+      <div class="axis-note">
+        <span class="lg"><i style="background:var(--bt)"></i>BT 豆温</span>
+        <span class="lg"><i style="background:var(--et)"></i>ET 风温</span>
+        <span class="lg"><i style="background:var(--ror)"></i>RoR(30s)</span>
+        <span class="lg"><i style="background:var(--bg-curve);height:1px;border-top:2px dashed var(--bg-curve);background:none"></i>背景参考曲线</span>
+        <span class="lg"><i style="background:none;border-top:2px dotted var(--accent)"></i>RoR 预测 / 里程碑预测</span>
+        <span class="tag">原：CurveWidget 全部 12 条曲线（图例可开关，见右栏）</span>
+      </div>
+      <!-- 事件按钮条 -->
+      <div class="panel">
+        <h3>烘焙事件 <span style="color:var(--faint);font-weight:400;font-size:11px;">点击记录 · 右键撤销/重录 · <kbd>Z</kbd> 撤销上一事件</span><span class="tag">原：EventPanel</span></h3>
+        <div class="event-strip">
+          <div class="ev recorded" onclick="evClick(this)">CHARGE<small>入豆 00:00 · 198.5℃</small></div>
+          <div class="ev recorded" onclick="evClick(this)">TP<small>回温 01:15 · 92.1℃</small></div>
+          <div class="ev recorded" onclick="evClick(this)">YELLOW<small>转黄 04:27 · 152.3℃</small></div>
+          <div class="ev pending" onclick="evClick(this)">FC_START<small>预计 08:56 · 192℃</small></div>
+          <div class="ev pending" onclick="evClick(this)">FC_END<small>—</small></div>
+          <div class="ev pending" onclick="evClick(this)">SC_START<small>—</small></div>
+          <div class="ev pending" onclick="evClick(this)">SC_END<small>—</small></div>
+          <div class="ev pending" onclick="evClick(this)">DROP<small>出锅（记录后锁定）</small></div>
+        </div>
+        <div class="note">按钮三态：<b>待录</b>（虚线灰）→ <b>已录</b>（琥珀高亮，含时间/温度）→ <b>DROP 锁定</b>（红，禁点，原锁定语义保留）。右键任意已录事件 → 撤销 / 重录（原 undo/redo 语义）。</div>
+      </div>
+    </div>
+
+    <!-- 右：图例/背景/目标/报警/操作记录 -->
+    <div class="col-right">
+      <div class="panel">
+        <h3>曲线图例<span class="tag">原：曲线可见性</span></h3>
+        <div class="legend-box">
+          <label><input type="checkbox" checked> <span style="color:var(--bt)">BT 豆温</span></label>
+          <label><input type="checkbox" checked> <span style="color:var(--et)">ET 风温</span></label>
+          <label><input type="checkbox" checked> <span style="color:var(--ror)">RoR(30s)</span></label>
+          <label><input type="checkbox"> <span style="color:var(--faint)">RoR(15s/60s)</span></label>
+          <label><input type="checkbox" checked> <span style="color:var(--accent)">RoR 预测</span></label>
+          <label><input type="checkbox" checked> <span style="color:var(--bg-curve)">背景参考</span></label>
+          <label><input type="checkbox" checked> <span style="color:#a3d977">燃气压力 (mbar)</span></label>
+          <label><input type="checkbox"> <span style="color:#88c9a3">风门/转速档位 (1-10)</span></label>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>背景参考<span class="tag">原：背景曲线加载</span></h3>
+        <select style="width:100%;">
+          <option>耶加雪菲 · 日晒 · 标准批 #0321</option>
+          <option>哥伦比亚 · 水洗 · #0298</option>
+          <option>（无背景）</option>
+        </select>
+        <div class="note">偏差：BT <b style="color:var(--ok)">-1.2℃</b> / 时间 <b style="color:var(--ok)">+8s</b>（Artisan 背景叠加 + 实时偏差）</div>
+      </div>
+      <div class="panel">
+        <h3>目标与里程碑<span class="tag">原：TargetPanel + ETA</span></h3>
+        <table style="font-size:11.5px;">
+          <tr><td>转黄目标</td><td>04:30 / 153℃</td><td style="color:var(--ok)">达标</td></tr>
+          <tr><td>一爆目标</td><td>09:00 / 195℃</td><td style="color:var(--accent)">ETA 08:56</td></tr>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>报警<span class="tag">原：阈值提示（Artisan Alarms 式）</span></h3>
+        <div class="alarm-item">⚑ 09:30 RoR &lt; 4℃/min 提醒</div>
+        <div class="alarm-item">⚑ 一爆温度偏离 ±3℃ 警示</div>
+      </div>
+      <div class="panel" style="flex:1;">
+        <h3>操作记录<span class="tag">原：ActionPanel · 仅记录</span></h3>
+        <div class="legend-box" style="font-size:11px;" id="oplog">
+          <div>02:10 燃气 20.0 → 18.5 mbar</div>
+          <div>04:30 风门 第5档 → 第6档（转黄同步）</div>
+          <div>05:40 滚筒转速 第4档 → 第5档</div>
+          <div>06:15 备注：豆色均匀</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span><span class="dot"></span>COM3 · HB Model S 四路协议 · 已连接</span>
+    <span>采样 1Hz · 质量：良好</span>
+    <span>批次 #20260827-03 · 耶加雪菲 320g</span>
+    <span>自动重连：已启用（原断线重连逻辑保留）</span>
+    <span>调试日志：帮助 → 诊断</span>
+  </div>
+</div>
+
+<!-- ═══════════ 屏2：设计/对比模式 ═══════════ -->
+<div class="screen" id="scr2">
+  <div class="topnav">
+    <span class="logo">工匠工作站</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙主屏</button>
+    <button class="on" onclick="go(2,this)">设计/对比模式</button>
+    <button onclick="go(3,this)">回放与标注</button>
+    <button onclick="go(4,this)">配置中心</button>
+    <button onclick="go(5,this)">批次档案</button>
+    <span class="spacer"></span>
+    <button onclick="document.documentElement.classList.toggle('light')">☀/🌙 主题</button>
+  </div>
+  <h2 class="scr-title">设计 / 对比模式<span class="badge src">原：CompareWindow + 背景曲线 + 曲线库</span></h2>
+  <div class="desc">借鉴 Artisan 的 <b>Comparator</b>（多曲线叠加对比）与 <b>Designer</b>（离线设计）理念：烘焙模式之外提供独立分析态，左侧批次/曲线库，右侧叠加中心，多曲线以色相区分，指标差异表置底。</div>
+  <div class="workspace">
+    <div class="col-left" style="width:216px;">
+      <div class="panel" style="flex:1;">
+        <h3>批次与曲线库</h3>
+        <div style="font-size:11.5px;line-height:2.2;">
+          <label><input type="checkbox" checked> #0321 耶加 日晒（基准）</label><br>
+          <label><input type="checkbox" checked> #0319 耶加 日晒</label><br>
+          <label><input type="checkbox" checked> #0298 哥伦 水洗</label><br>
+          <label><input type="checkbox"> #0287 耶加 日晒</label><br>
+          <label><input type="checkbox"> #0275 曼特宁 湿刨</label><br>
+        </div>
+        <div class="note">勾选即叠加，最多 5 条（原 CompareWindow 语义）</div>
+      </div>
+    </div>
+    <div class="col-mid">
+      <div class="chart-wrap"><canvas id="chart2" height="380"></canvas></div>
+      <div class="panel">
+        <h3>对比指标差异<span class="tag">原：compare 模块（TP/转黄/一爆/发展期/RoR峰值/曲率）</span></h3>
+        <table style="font-size:11.5px;">
+          <tr><th>批次</th><th>TP</th><th>转黄</th><th>一爆</th><th>总时长</th><th>DTR</th><th>RoR峰值</th><th>曲率AUC差</th></tr>
+          <tr><td>#0321 基准</td><td>92.1</td><td>04:27</td><td>08:56</td><td>11:40</td><td>18.2%</td><td>31.5</td><td>—</td></tr>
+          <tr><td>#0319</td><td>91.8</td><td>04:31 (+4s)</td><td>09:02 (+6s)</td><td>11:48</td><td>18.9%</td><td>30.8</td><td>0.012</td></tr>
+          <tr><td>#0298</td><td>93.4</td><td>04:02 (-25s)</td><td>08:21 (-35s)</td><td>10:55</td><td>16.4%</td><td>34.2</td><td>0.087</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="panel"><h3>叠加选项</h3>
+        <div class="legend-box">
+          <label><input type="checkbox" checked> 温度轴对齐</label>
+          <label><input type="checkbox" checked> 显示 RoR 叠加</label>
+          <label><input type="checkbox"> 时间归一化</label>
+        </div>
+      </div>
+      <div class="panel"><h3>导出<span class="tag">原：export 四类</span></h3>
+        <div class="event-strip"><div class="ev">CSV</div><div class="ev">JSON</div><div class="ev">TXT</div><div class="ev">PDF 报告</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 屏3：回放与标注 ═══════════ -->
+<div class="screen" id="scr3">
+  <div class="topnav">
+    <span class="logo">工匠工作站</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙主屏</button>
+    <button onclick="go(2,this)">设计/对比模式</button>
+    <button class="on" onclick="go(3,this)">回放与标注</button>
+    <button onclick="go(4,this)">配置中心</button>
+    <button onclick="go(5,this)">批次档案</button>
+    <span class="spacer"></span>
+    <button onclick="document.documentElement.classList.toggle('light')">☀/🌙 主题</button>
+  </div>
+  <h2 class="scr-title">回放与事件标注<span class="badge src">原：ReplayWindow + EventPanel 标注语义</span></h2>
+  <div class="desc">借鉴 Artisan 的 <b>事件标注（Event Annotations）</b>：回放时曲线上方以旗标显示每次事件与操作，回放控制条置于图表下沿，支持倍速与逐帧。</div>
+  <div class="col-mid" style="max-width:1100px;">
+    <div class="chart-wrap"><canvas id="chart3" height="360"></canvas></div>
+    <div class="panel">
+      <h3>回放控制<span class="tag">原：ReplayWindow（双图+倍速+滑杆）</span></h3>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="pbtn">⏮</button>
+        <button class="pbtn">◀◀</button>
+        <button class="pbtn rec" onclick="playSim(this)">▶ 播放</button>
+        <button class="pbtn">▶▶</button>
+        <button class="pbtn">⏭</button>
+        <input type="range" min="0" max="700" value="462" style="flex:1;min-width:140px" oninput="replaySet(this.value)">
+        <span id="rp-time" style="font-family:var(--mono);color:var(--lcd-on);font-weight:700;font-size:13px;">07:42 / 11:40</span>
+        <span>倍速 <select><option>0.5×</option><option selected>1×</option><option>2×</option><option>4×</option></select></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>事件标注轴（Artisan Annotation 式）</h3>
+      <div class="legend-box" style="font-size:11.5px;">
+        <span>⚑00:00 CHARGE</span> · <span>⚑01:15 TP(自动)</span> · <span>⚑04:27 YELLOW</span> · <span>⚑02:10 燃气20.0→18.5mbar</span> · <span>⚑04:30 风门5档→6档</span> · <span>⚑05:40 转速4档→5档</span> · <span>⚑06:15 备注</span>
+      </div>
+      <div class="note">回放中可右键标注 → 编辑/删除/重录（原撤销重录语义扩展到回放态）</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 屏4：配置中心 ═══════════ -->
+<div class="screen" id="scr4">
+  <div class="topnav">
+    <span class="logo">工匠工作站</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙主屏</button>
+    <button onclick="go(2,this)">设计/对比模式</button>
+    <button onclick="go(3,this)">回放与标注</button>
+    <button onclick="go(4,this)">配置中心</button>
+    <button onclick="go(5,this)">批次档案</button>
+    <span class="spacer"></span>
+    <button onclick="document.documentElement.classList.toggle('light')">☀/🌙 主题</button>
+  </div>
+  <h2 class="scr-title">配置中心<span class="badge src">原：AxisSettingsDialog + DisplaySettingsDialog + 通道映射 + 调试</span></h2>
+  <div class="desc">借鉴 Artisan 的 <b>Config 菜单分区</b>（Curves / Sampling / Statistics / Themes）：所有设置归入一个左侧树形导航的配置中心，替代原来的三个独立对话框。</div>
+  <div class="tabs" id="cfgTabs">
+    <button class="on" onclick="cfg(0,this)">坐标轴</button>
+    <button onclick="cfg(1,this)">显示与曲线</button>
+    <button onclick="cfg(2,this)">事件与标注</button>
+    <button onclick="cfg(3,this)">设备与通道</button>
+    <button onclick="cfg(4,this)">主题</button>
+    <button onclick="cfg(5,this)">诊断</button>
+  </div>
+  <div class="panel" id="cfgBody" style="min-height:300px;"></div>
+</div>
+
+<!-- ═══════════ 屏5：批次档案 ═══════════ -->
+<div class="screen" id="scr5">
+  <div class="topnav">
+    <span class="logo">工匠工作站</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙主屏</button>
+    <button onclick="go(2,this)">设计/对比模式</button>
+    <button onclick="go(3,this)">回放与标注</button>
+    <button onclick="go(4,this)">配置中心</button>
+    <button onclick="go(5,this)">批次档案</button>
+    <span class="spacer"></span>
+    <button onclick="document.documentElement.classList.toggle('light')">☀/🌙 主题</button>
+  </div>
+  <h2 class="scr-title">批次档案与导出<span class="badge src">原：BatchInfoDialog + analysis + export</span></h2>
+  <div class="grid2" style="max-width:1100px;">
+    <div class="panel">
+      <h3>批次信息<span class="tag">原：BatchInfoDialog 全字段</span></h3>
+      <table style="font-size:12px;">
+        <tr><td>批次号</td><td>20260827-03</td></tr>
+        <tr><td>豆种/处理</td><td>耶加雪菲 · 日晒 G1</td></tr>
+        <tr><td>生豆重/熟豆重</td><td>320g / 274g（失重 14.4%）</td></tr>
+        <tr><td>烘焙度（色值）</td><td>Agtron 62</td></tr>
+        <tr><td>机台/环境</td><td>HB Model S · 26℃ / 58%RH</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>分析指标<span class="tag">原：analysis / development / curvature</span></h3>
+      <table style="font-size:12px;">
+        <tr><td>回温点</td><td>92.1℃ @ 01:15</td></tr>
+        <tr><td>转黄/一爆</td><td>04:27 / 08:56</td></tr>
+        <tr><td>发展期 DTR</td><td>18.2%（02:44）</td></tr>
+        <tr><td>RoR 峰值/终值</td><td>31.5 / 3.8 ℃/min</td></tr>
+        <tr><td>曲率 AUC / 采样质量</td><td>0.86 / 良好</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="panel" style="max-width:1100px;margin-top:10px;">
+    <h3>历史批次表<span class="tag">原：database 批次记录</span></h3>
+    <table>
+      <tr><th>批次</th><th>豆种</th><th>总时长</th><th>转黄</th><th>一爆</th><th>DTR</th><th>失重</th><th>操作</th></tr>
+      <tr><td>20260827-03</td><td>耶加雪菲 日晒</td><td>11:40</td><td>04:27</td><td>08:56</td><td>18.2%</td><td>14.4%</td><td><button class="pbtn" onclick="go(2)">对比</button> <button class="pbtn" onclick="go(3)">回放</button> <button class="pbtn" onclick="toast('导出：CSV/JSON/TXT/PDF')">导出</button></td></tr>
+      <tr><td>20260826-11</td><td>哥伦比亚 水洗</td><td>10:55</td><td>04:02</td><td>08:21</td><td>16.4%</td><td>13.9%</td><td><button class="pbtn" onclick="go(2)">对比</button> <button class="pbtn" onclick="go(3)">回放</button> <button class="pbtn" onclick="toast('导出：CSV/JSON/TXT/PDF')">导出</button></td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ---------- 导航 ---------- */
+function go(n,btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('scr'+n).classList.add('active');
+  if(btn){btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+  window.scrollTo(0,0);
+  if(n===1)drawMain();
+  if(n===2)drawCompare();
+  if(n===3)drawReplay();
+}
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',2200);
+}
+/* ---------- 事件按钮三态 ---------- */
+function evClick(el){
+  if(el.classList.contains('drop-locked')){toast('DROP 已锁定：需先在烘焙菜单解锁（原锁定语义）');return;}
+  if(el.classList.contains('pending')){
+    el.classList.remove('pending');el.classList.add('recorded');
+    el.querySelector('small').textContent='已录 '+new Date().toTimeString().slice(0,5);
+    if(el.textContent.startsWith('DROP')){el.classList.remove('recorded');el.classList.add('drop-locked');}
+    toast('事件已记录（原 EventPanel.record）');
+  } else {
+    toast('右键可撤销/重录（原 undo/redo 语义）');
+  }
+}
+function replaySet(v){
+  const m=Math.floor(v/60),s=String(v%60).padStart(2,'0');
+  document.getElementById('rp-time').textContent=m+':'+s+' / 11:40';
+}
+let playT=null;
+function playSim(btn){
+  if(playT){clearInterval(playT);playT=null;btn.textContent='▶ 播放';return;}
+  btn.textContent='⏸ 暂停';
+  playT=setInterval(()=>{const r=document.querySelector('#scr3 input[type=range]');r.value=Math.min(700,+r.value+4);replaySet(r.value);if(+r.value>=700){clearInterval(playT);playT=null;btn.textContent='▶ 播放';}},80);
+}
+/* ---------- 配置中心 ---------- */
+const cfgPages=[
+ '<h3>坐标轴设置 <span class="badge src">原：AxisSettingsDialog</span></h3><table><tr><th>轴</th><th>范围</th><th>说明</th></tr><tr><td>左轴（温度 ℃）</td><td><input value="50" style="width:60px"> ~ <input value="250" style="width:60px"></td><td>BT/ET/背景曲线共用</td></tr><tr><td>右轴（RoR ℃/min）</td><td><input value="0" style="width:60px"> ~ <input value="40" style="width:60px"></td><td>三路 RoR + 预测</td></tr><tr><td>时间轴</td><td><input value="15" style="width:60px"> 分钟 / 自动延伸</td><td>烘焙中自动，回放固定</td></tr></table>',
+ '<h3>显示与曲线 <span class="badge src">原：DisplaySettingsDialog</span></h3><div class="legend-box"><label><input type="checkbox" checked> 曲线可见性（12 条，见主屏图例）</label><label>线宽 <select><option>1px</option><option selected>2px</option><option>3px</option></select></label><label><input type="checkbox" checked> 采样质量门标记（毛刺/断点）</label><label><input type="checkbox" checked> 里程碑预测线</label><label><input type="checkbox"> 燃气压力(mbar) / 风门·转速档位(1-10) 曲线叠加显示（仅记录值，无控制输出）</label></div>',
+ '<h3>事件与标注 <span class="badge src">原：EventPanel 标注语义</span></h3><div class="legend-box"><label><input type="checkbox" checked> 图上显示事件旗标与时间/温度</label><label><input type="checkbox" checked> 操作记录生成曲线标注</label><label><input type="checkbox" checked> DROP 后锁定全部事件</label><label>事件快捷键：CHARGE=<kbd>C</kbd> YELLOW=<kbd>Y</kbd> FCs=<kbd>F</kbd> DROP=<kbd>D</kbd> 撤销=<kbd>Z</kbd>（Artisan 快捷键体系）</label></div>',
+ '<h3>设备与通道 <span class="badge src">原：serial_manager + channel_mapping</span></h3><table><tr><th>通道</th><th>映射</th><th>协议</th></tr><tr><td>CH1</td><td>风温 ET（入温 IT 复用）</td><td rowspan="4">HB Model S 四路 / TC4 / 旧三路（自动识别）</td></tr><tr><td>CH2</td><td>豆温 BT</td></tr><tr><td>CH3</td><td>备用/辅探</td></tr><tr><td>CH4</td><td>备用/辅探</td></tr></table><div class="note">断线自动重连：已启用（重试间隔 3s，原逻辑保留）</div>',
+ '<h3>主题 <span class="badge src">原：双主题</span></h3><div class="legend-box"><label>当前：<select onchange="document.documentElement.classList.toggle(\'light\',this.value===\'浅色\')"><option>深色</option><option>浅色</option></select></label><label><input type="checkbox" checked> 曲线配色：Artisan 经典（橙BT/蓝ET/紫RoR）</label><label>自定义背景图 / 字体（Artisan Config»UI）</label></div>',
+ '<h3>调试与诊断 <span class="badge src">原：debug logger + 诊断包</span></h3><div class="legend-box"><label><input type="checkbox" checked> 调试日志（串口原始帧 / 解析结果）</label><button class="pbtn" onclick="toast(\'已打包：日志+配置+最近批次 → diagnostics.zip\')">生成诊断包</button></label></div>'
+];
+function cfg(i,btn){
+  document.getElementById('cfgBody').innerHTML=cfgPages[i];
+  document.getElementById('cfgTabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+}
+cfg(0,document.querySelector('#cfgTabs button'));
+document.getElementById('cfgBody').innerHTML=cfgPages[0];
+
+/* ---------- 机台手动操作（纯手动 · 软件仅记录，不发送控制指令） ---------- */
+const gearState={damp:6,drum:5};      // 风门/滚筒转速当前档位（1-10，相互独立）
+let gasVal=18.5;                      // 燃气压力 mbar
+const gearName={damp:'风门',drum:'滚筒转速'};
+function nowStr(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function logOp(text){
+  const log=document.getElementById('oplog');if(!log)return;
+  const div=document.createElement('div');div.textContent=nowStr()+' '+text;
+  log.prepend(div);while(log.children.length>10)log.removeChild(log.lastChild);
+}
+function gearSlider(key){return document.querySelector('#scr1 input.gear-slider.'+key);}
+function gearShow(key,v){document.getElementById('v-'+key).textContent='第 '+v+' 档';}
+function gearSet(key,i){
+  i=Math.max(1,Math.min(10,Math.round(i)));
+  if(i===gearState[key])return;
+  const old=gearState[key];gearState[key]=i;
+  const s=gearSlider(key);if(s)s.value=i;
+  gearShow(key,i);
+  logOp(gearName[key]+' 第'+old+'档 → 第'+i+'档');toast(gearName[key]+' 已手动调至第 '+i+' 档（仅记录操作）');
+}
+function gearStep(key,d){gearSet(key,gearState[key]+d);}
+function gasShow(v){document.getElementById('v-gas').textContent=(+v).toFixed(1)+' mbar';}
+function gasSet(v){gasSetVal(+v);}
+function gasSetVal(v){
+  v=Math.max(0,Math.min(50,Math.round(v*2)/2));
+  const old=gasVal;
+  gasVal=v;gasShow(v);
+  const r=document.querySelector('#scr1 input[type=range]:not(.gear-slider)');if(r&&+r.value!==v)r.value=v;
+  if(v!==old)logOp('燃气 '+old.toFixed(1)+' → '+v.toFixed(1)+' mbar');
+}
+function gasStep(d){gasSetVal(gasVal+d);}
+gearShow('damp',6);gearShow('drum',5);
+
+/* ---------- 曲线数据 ---------- */
+function roastData(scale=1){
+  const pts=[]; // t(秒), BT, ET, RoR
+  let bt=92.1, et=186;
+  const btT=t=>{ // 分钟
+    if(t<1.25) return 198.5-(198.5-92.1)*(t/1.25); // charge→TP
+    const u=t-1.25;
+    return 92.1+ (1-Math.exp(-u/3.2))*118*(1-u/14.5);
+  };
+  const etT=t=>{ if(t<1.25) return 205-(205-160)*(t/1.25); const u=t-1.25; return 160+(1-Math.exp(-u/2.6))*88*(1-u/15.5); };
+  for(let t=0;t<=11.67*60*scale;t+=6){
+    const m=t/60;
+    const b=btT(Math.min(m,11.67));
+    const prev=btT(Math.max(0,m-0.5));
+    const ror=(b-prev)/0.5;
+    pts.push([m,b,etT(Math.min(m,11.67)),Math.max(0,ror)]);
+  }
+  return pts;
+}
+/* ---------- 通用绘图 ---------- */
+function drawRoastChart(cv,opts){
+  const ctx=cv.getContext('2d');
+  const W=cv.width=cv.clientWidth*2, H=cv.height=cv.getAttribute('height')*2;
+  cv.style.height=(cv.getAttribute('height'))+'px';
+  ctx.scale(1,1);
+  const css=getComputedStyle(document.documentElement);
+  const dark=!document.documentElement.classList.contains('light');
+  const bg=dark?'#141519':'#faf8f5', grid=dark?'#2b2d33':'#e3dfd5', txt=dark?'#8b887e':'#8a8579';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const L=70,R=W-80,T=24,B=H-40;
+  const tMax=opts.tMax||12, yMin=opts.yMin??40,yMax=opts.yMax??250, rMax=opts.rMax??40;
+  const X=t=>L+(t/tMax)*(R-L), Y=v=>B-(v-yMin)/(yMax-yMin)*(B-T), Yr=v=>B-(v/rMax)*(B-T);
+  // grid
+  ctx.strokeStyle=grid;ctx.fillStyle=txt;ctx.font='22px Consolas';ctx.lineWidth=1;
+  for(let g=yMin;g<=yMax;g+=40){ctx.beginPath();ctx.moveTo(L,Y(g));ctx.lineTo(R,Y(g));ctx.stroke();ctx.fillText(g+'°',6,Y(g)+8);}
+  for(let g=0;g<=rMax;g+=10){ctx.fillText(g+'',R+14,Yr(g)+8);}
+  for(let t=0;t<=tMax;t+=2){ctx.beginPath();ctx.moveTo(X(t),T);ctx.lineTo(X(t),B);ctx.stroke();ctx.fillText(t+'m',X(t)-10,H-14);}
+  ctx.fillText('℃',10,T+18);ctx.fillText('RoR',R+12,T+18);
+  const data=roastData(opts.frac||1);
+  const cut=Math.floor(data.length*(opts.frac||1));
+  const line=(idx,color,yfn,dash)=>{
+    ctx.strokeStyle=color;ctx.lineWidth=3.5;ctx.setLineDash(dash||[]);
+    ctx.beginPath();
+    for(let i=0;i<cut&&i<data.length;i++){const p=data[i];const y=yfn(p[idx]);i===0?ctx.moveTo(X(p[0]),y):ctx.lineTo(X(p[0]),y);}
+    ctx.stroke();ctx.setLineDash([]);
+  };
+  if(opts.bgCurve) line(1,css.getPropertyValue('--bg-curve').trim()||'#777',Y,[10,8]);
+  if(opts.showET) line(2,'#54cbe8',Y);
+  line(1,'#ffa03a',Y);
+  if(opts.showRoR) line(3,'#c98bf0',Yr);
+  if(opts.prediction){ // 预测虚线
+    ctx.strokeStyle='#f0a83f';ctx.lineWidth=3;ctx.setLineDash([6,8]);ctx.beginPath();
+    const last=data[cut-1];
+    for(let i=cut-1;i<Math.min(cut+20,data.length);i++){const p=data[i];i===cut-1?ctx.moveTo(X(p[0]),Yr(p[3])):ctx.lineTo(X(p[0]),Yr(p[3]));}
+    ctx.stroke();ctx.setLineDash([]);
+  }
+  // 事件竖线
+  (opts.events||[]).forEach(ev=>{
+    ctx.strokeStyle='rgba(240,168,63,.55)';ctx.lineWidth=2;ctx.setLineDash([4,6]);
+    ctx.beginPath();ctx.moveTo(X(ev.t),T);ctx.lineTo(X(ev.t),B);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f0a83f';ctx.font='bold 20px "Segoe UI"';
+    ctx.fillText(ev.n,X(ev.t)+6,T+22);
+    ctx.font='18px Consolas';ctx.fillStyle=txt;
+    ctx.fillText(ev.d||'',X(ev.t)+6,T+44);
+  });
+  // 当前点
+  if(opts.cursor){const p=data[cut-1];
+    ctx.fillStyle='#ffa03a';ctx.beginPath();ctx.arc(X(p[0]),Y(p[1]),7,0,7);ctx.fill();
+    ctx.fillStyle=dark?'#eee':'#222';ctx.font='bold 22px Consolas';
+    ctx.fillText(p[1].toFixed(1)+'° @ '+Math.floor(p[0])+':'+String(Math.floor(p[0]%1*60)).padStart(2,'0'),X(p[0])+14,Y(p[1])-12);
+  }
+  // 标题
+  if(opts.title){ctx.fillStyle=txt;ctx.font='20px "Segoe UI"';ctx.fillText(opts.title,L,16);}
+}
+function drawMain(){drawRoastChart(document.getElementById('chart1'),{frac:.66,cursor:true,showET:true,showRoR:true,bgCurve:true,prediction:true,events:[{t:0,n:'CHARGE',d:'198.5°'},{t:1.25,n:'TP',d:'92.1°'},{t:4.45,n:'YELLOW',d:'152.3°'},{t:8.93,n:'FC·ETA',d:'192° 预测'}],title:'批次 #20260827-03 · 耶加雪菲 日晒 320g · （点击标题行打开批次属性 — Artisan Roast Properties 交互）'});}
+function drawCompare(){drawRoastChart(document.getElementById('chart2'),{frac:1,showET:false,showRoR:false,bgCurve:true,events:[{t:0,n:'CHARGE'},{t:1.25,n:'TP'},{t:4.45,n:'YELLOW'},{t:8.93,n:'FCs'},{t:11.67,n:'DROP'}],title:'叠加对比：#0321 基准（橙实线） vs #0319 / #0298（灰虚线 = 背景/对比曲线，全部 12 条曲线可勾选叠加）'});}
+function drawReplay(){drawRoastChart(document.getElementById('chart3'),{frac:.66,cursor:true,showET:true,showRoR:true,events:[{t:0,n:'CHARGE'},{t:1.25,n:'TP'},{t:4.45,n:'YELLOW'},{t:2.17,n:'⚙燃气→18.5mbar'},{t:4.5,n:'⚙风门→6档'},{t:5.67,n:'⚙转速→5档'}],title:'回放 #20260827-03 · 事件标注旗标沿曲线上方分布（Artisan Event Annotations）· 燃气mbar/风门转速档位均为手动操作记录'});}
+window.addEventListener('resize',()=>{const a=document.querySelector('.screen.active');if(a.id==='scr1')drawMain();if(a.id==='scr2')drawCompare();if(a.id==='scr3')drawReplay();});
+drawMain();
+</script>
+</body>
+</html>

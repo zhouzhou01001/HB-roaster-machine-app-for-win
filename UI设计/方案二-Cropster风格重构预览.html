@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方案二 · Cropster 风格重构预览 — Roasting Intelligence</title>
+<style>
+:root{
+  --bg:#f4f6f5; --card:#ffffff; --line:#e2e8e6; --txt:#253331; --dim:#7b8a87;
+  --brand:#00a67d; --brand-soft:#e0f5ef; --brand-deep:#007d5f;
+  --bt:#f59e0b; --et:#0ea5e9; --ror:#8b5cf6; --ref:#9aa5a3;
+  --danger:#e05d5d; --warn:#d97706;
+}
+body.dark{--bg:#1c2422;--card:#263030;--line:#374543;--txt:#e6edeb;--dim:#8fa09d;--brand-soft:#1d3a33;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI","Microsoft YaHei",sans-serif;}
+body{background:var(--bg);color:var(--txt);font-size:13.5px;}
+.screen{display:none;min-height:100vh;padding:12px;}
+.screen.active{display:block;}
+.topnav{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;margin-bottom:10px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.topnav .logo{font-weight:700;color:var(--brand);margin-right:8px;font-size:14.5px;}
+.topnav button{background:transparent;color:var(--dim);border:none;border-radius:8px;padding:6px 13px;cursor:pointer;font-size:13px;font-weight:500;}
+.topnav button:hover{background:var(--brand-soft);color:var(--brand-deep);}
+.topnav button.on{background:var(--brand);color:#fff;font-weight:600;}
+.topnav .spacer{flex:1;}
+h2.scr-title{font-size:17px;margin:4px 0 8px;color:var(--txt);}
+.desc{color:var(--dim);font-size:12.5px;margin-bottom:12px;line-height:1.75;max-width:1000px;}
+.badge{display:inline-block;font-size:10.5px;background:var(--brand-soft);color:var(--brand-deep);border-radius:20px;padding:2px 9px;margin-left:6px;font-weight:500;white-space:nowrap;}
+.badge.src{background:#eef2f5;color:#5b7a95;} body.dark .badge.src{background:#2b3a45;color:#9ec5e8;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.card h3{font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;color:var(--txt);}
+.workspace{display:flex;gap:10px;align-items:stretch;}
+.chart-card{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;}
+canvas{display:block;width:100%;}
+.lg{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--dim);}
+.lg i{width:16px;height:4px;border-radius:2px;display:inline-block;}
+/* 侧栏（可折叠 = Cropster Detachable Sidebars） */
+.sidebar{width:250px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;transition:.25s;}
+.sidebar.hidden{display:none;}
+.meas{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px;background:var(--bg);margin-bottom:5px;font-size:12.5px;}
+.meas b{font-family:Consolas,monospace;font-size:15px;}
+.meas .sw{width:10px;height:10px;border-radius:3px;margin-right:7px;display:inline-block;}
+/* 流媒体式开始/停止（Cropster RI4） */
+.player{display:flex;align-items:center;justify-content:center;gap:14px;padding:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;}
+.bigbtn{border:none;border-radius:999px;padding:12px 34px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;display:flex;align-items:center;gap:8px;}
+.bigbtn.start{background:var(--brand);}
+.bigbtn.stop{background:var(--danger);}
+.bigbtn.gray{background:#64748b;}
+.bigbtn:disabled{opacity:.4;cursor:not-allowed;}
+/* 事件按钮（精简胶囊 = Cropster 少按钮理念） */
+.pill{display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid var(--line);background:var(--card);color:var(--txt);border-radius:999px;padding:7px 16px;cursor:pointer;font-size:12.5px;font-weight:500;transition:.15s;}
+.pill small{font-size:10px;color:var(--dim);font-weight:400;}
+.pill:hover{border-color:var(--brand);color:var(--brand-deep);}
+.pill.done{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-deep);}
+.pill.lock{background:#fbeaea;border-color:var(--danger);color:var(--danger);cursor:not-allowed;} body.dark .pill.lock{background:#3a2424;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;}
+th{color:var(--dim);font-weight:600;font-size:11.5px;background:transparent;}
+td b{font-family:Consolas,monospace;}
+.note{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.6;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.toggle{position:relative;width:38px;height:20px;background:#cbd5d1;border-radius:999px;cursor:pointer;display:inline-block;vertical-align:middle;}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;}
+.toggle.on{background:var(--brand);} .toggle.on::after{left:20px;}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px;}
+.kv:last-child{border-bottom:none;}
+.kv b{font-family:Consolas,monospace;}
+.tag{font-size:10px;border:1px solid var(--line);border-radius:20px;padding:1px 8px;color:var(--dim);}
+.phasebar{display:flex;height:14px;border-radius:7px;overflow:hidden;font-size:9.5px;color:#fff;text-align:center;}
+.phasebar div{line-height:14px;}
+.mod-rows{display:flex;flex-direction:column;gap:5px;font-size:11.5px;}
+.mod-rows .r{display:flex;justify-content:space-between;color:var(--dim);}
+.callout{border-left:3px solid var(--brand);background:var(--brand-soft);padding:9px 12px;border-radius:0 8px 8px 0;margin:10px 0;font-size:12.5px;line-height:1.75;}
+.predict{position:relative;}
+.predict .bubble{position:absolute;background:var(--card);border:1.5px solid var(--brand);border-radius:10px;padding:8px 12px;font-size:11.5px;box-shadow:0 4px 14px rgba(0,166,125,.18);}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.steps{counter-reset:s;}
+.step{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+.step .n{counter-increment:s;width:26px;height:26px;border-radius:50%;background:var(--brand-soft);color:var(--brand-deep);font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step .n::before{content:counter(s);}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#12312a;color:#b9f0dd;border:1px solid var(--brand);padding:9px 20px;border-radius:10px;display:none;z-index:99;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.25);}
+.comment-pop{position:fixed;z-index:50;background:var(--card);border:1px solid var(--brand);border-radius:12px;padding:12px;width:260px;box-shadow:0 10px 30px rgba(0,0,0,.15);display:none;}
+.comment-pop input,.comment-pop select{width:100%;margin-top:6px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--txt);}
+.btn-sm{background:var(--brand);border:none;color:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px;margin-top:8px;}
+.btn-sm.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 屏0：方案说明 ═══════════ -->
+<div class="screen active" id="scr0">
+  <div class="topnav">
+    <span class="logo">● 烘焙智能 · 方案二（Cropster 风格）</span>
+    <button class="on" onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙准备</button>
+    <button onclick="go(2,this)">烘焙主屏</button>
+    <button onclick="go(3,this)">结束与复盘</button>
+    <button onclick="go(4,this)">曲线库·对比</button>
+    <button onclick="go(5,this)">偏好设置</button>
+    <span class="spacer"></span>
+    <button onclick="document.body.classList.toggle('dark')">◑ 明/暗</button>
+  </div>
+  <h2 class="scr-title">方案二：Cropster 风格重构 — 「Roasting Intelligence 轻量智能」</h2>
+  <div class="desc">
+    本方案完整借鉴 Cropster Roasting Intelligence（RI4/RI5）的<b>工作流式轻量设计</b>：以「烘焙前 → 烘焙中 → 烘焙后」三个阶段组织界面，
+    图表区最大化、按钮最少化；曲线数值集中在可折叠侧栏；底部调制阶段图（Modulation Chart）与阶段计时；
+    点击图表任意处弹出备注框；智能预测（豆温/RoR 未来 2 分钟、一爆预测、Flick 预警）；
+    流媒体式的底部 Start/Stop 大按钮；两栏式烘焙前准备布局与批次间隔计时器。
+    视觉风格采用 Cropster 的<b>浅色、大圆角卡片、留白充足、品牌绿点缀</b>的现代 Web 质感。
+  </div>
+  <div class="callout"><b>借鉴 Cropster RI 的关键特性：</b>
+    ① 三阶段工作流（Pre-Roast 两栏布局 / Roasting / After-Roast）② 右侧可折叠测量侧栏（Detachable Sidebar + 测量重排）③ 点击图表添加备注/事件（click-to-comment）④ 底部调制阶段图 + 阶段计时器（Modulation Chart）⑤ 智能预测开关（Smart Predictions：曲线预测/一爆预测/Flick 预警）⑥ 流媒体式 Start/Stop（RI4）⑦ Between Batch Timer 批次间隔计时 ⑧ 参考曲线 + 历史参考备注清理（Hide past reference comments）⑨ 结束时重量/备注编辑与保存流程 ⑩ 偏好设置中心（齿轮入口、分页）⑪ 曲线数值精确探查（RI5 Discover Curves' Values）⑫ Roast Compare Report 对比报告
+  </div>
+
+  <h2 class="scr-title" style="margin-top:14px;">功能完整性映射总表<span class="badge">原程序功能逐项核对</span></h2>
+  <div class="card">
+  <table>
+    <tr><th style="width:26%">原功能模块</th><th style="width:32%">原功能点</th><th>方案二落位（屏号·区域）</th></tr>
+    <tr><td>MainWindow 主窗口</td><td>21 项工具栏动作</td><td>顶栏 + 底部播放器按钮 + 左下齿轮偏好（Cropster 入口三分布）</td></tr>
+    <tr><td rowspan="3">CurveWidget</td><td>12 条曲线</td><td>主屏图表 + 侧栏测量卡（可折叠/重排 = RI5 Reorder Measurements）</td></tr>
+    <tr><td>双轴、网格、缩放</td><td>同 Cropster：左温右 RoR，坐标轴在偏好中心调整</td></tr>
+    <tr><td>里程碑预测线 / 事件标记</td><td>智能预测区（FC 预测 / 曲线预测 / Flick 预警）+ 图内标记</td></tr>
+    <tr><td>指标卡（7 组）</td><td>豆温/风温/RoR/时间/发展期/回温点/采样质量</td><td>侧栏测量卡（每条曲线一张数值卡）+ 阶段计时器</td></tr>
+    <tr><td rowspan="2">EventPanel</td><td>8 类事件</td><td>底部精简事件胶囊条（Cropster 少按钮理念），点击图表也可弹事件/备注（click-to-comment）</td></tr>
+    <tr><td>撤销/重录、DROP 锁定</td><td>事件长按/右键 → 撤销重录；DROP 记录后红色锁定胶囊</td></tr>
+    <tr><td>ActionPanel</td><td>人工操作记录</td><td>点击图表添加备注/操作（Cropster comments 交互）</td></tr>
+    <tr><td>TargetPanel</td><td>目标转黄/一爆</td><td>烘焙前两栏布局中「参考曲线 + 目标」卡；烘焙中偏差显示</td></tr>
+    <tr><td>设备连接</td><td>串口/三协议/自动重连</td><td>烘焙准备屏「烘焙机连接」卡 + 状态徽标</td></tr>
+    <tr><td>ReplayWindow</td><td>回放/倍速/滑杆</td><td>屏3 复盘模式（Smart Replay 理念：滑杆重演）</td></tr>
+    <tr><td>CompareWindow</td><td>多批次对比</td><td>屏4 曲线库 + 对比报告（Roast Compare Report）</td></tr>
+    <tr><td>批次/分析/导出</td><td>批次信息/分析/四类导出</td><td>屏3 保存流程 + 屏4 报告导出</td></tr>
+    <tr><td>三个设置对话框</td><td>坐标轴/显示/曲线/主题</td><td>屏5 偏好设置中心（Cropster Preferences 式分页）</td></tr>
+    <tr><td>通道映射/调试</td><td>CH1-4/日志/诊断包</td><td>屏5「烘焙机」页 + 诊断</td></tr>
+  </table>
+  <div class="note">核对基准：与《烘焙软件UI重构预览.html》第 0 屏功能清单一致，21+7+12+8 全量保留，仅改变呈现方式。</div>
+  </div>
+</div>
+
+<!-- ═══════════ 屏1：烘焙准备（两栏布局） ═══════════ -->
+<div class="screen" id="scr1">
+  <div class="topnav">
+    <span class="logo">● 烘焙智能</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button class="on" onclick="go(1,this)">烘焙准备</button>
+    <button onclick="go(2,this)">烘焙主屏</button>
+    <button onclick="go(3,this)">结束与复盘</button>
+    <button onclick="go(4,this)">曲线库·对比</button>
+    <button onclick="go(5,this)">偏好设置</button>
+    <span class="spacer"></span>
+    <button onclick="document.body.classList.toggle('dark')">◑ 明/暗</button>
+  </div>
+  <h2 class="scr-title">烘焙准备 · 两栏布局<span class="badge src">RI5 Two-Column Pre-Roast Layout</span></h2>
+  <div class="desc">Cropster RI5 的烘焙前两栏布局：左栏选择配方与生豆信息（选定后自动预填），右栏预览参考曲线与烘焙机状态，准备就绪后 Start 按钮激活。</div>
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:10px;">
+        <h3>① 选择配方（Profile）<span class="tag">原：背景曲线加载/目标面板</span></h3>
+        <select style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--txt);" onchange="toast('已选择配方：绿色库存与起始重量自动预填（Cropster 行为）')">
+          <option>耶加雪菲 · 日晒 · 标准批（320g）</option>
+          <option>哥伦比亚 · 水洗 · 中浅（300g）</option>
+          <option>曼特宁 · 湿刨 · 深（350g）</option>
+        </select>
+        <div class="kv" style="margin-top:8px;"><span>生豆 / 库存批次</span><b>YE-2608 · 14.2kg</b></div>
+        <div class="kv"><span>起始重量（自动预填）</span><b>320 g</b></div>
+        <div class="kv"><span>目标转黄 / 一爆</span><b>04:30 / 09:00</b></div>
+      </div>
+      <div class="card">
+        <h3>② 烘焙机连接<span class="tag">原：serial_manager + channel_mapping</span></h3>
+        <div class="kv"><span>设备</span><b style="color:var(--brand)">● COM3 · HB Model S（四路）</b></div>
+        <div class="kv"><span>CH1/CH2/CH3/CH4</span><b>ET / BT / 备用 / 备用</b></div>
+        <div class="kv"><span>协议自动识别</span><b>Model S / TC4 / 旧三路</b></div>
+        <div class="kv"><span>断线自动重连</span><b>启用（3s）</b></div>
+        <div class="note">连接异常时此卡置顶红条提示并阻断 Start（原连接状态机）</div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:10px;">
+        <h3>参考曲线预览<span class="tag">原：背景曲线/Compare</span></h3>
+        <div style="border-radius:10px;overflow:hidden;"><canvas id="chart-pre" height="240"></canvas></div>
+        <div class="note">选定配方即载入参考曲线（虚线）；烘焙中实时叠加并显示偏差（Cropster Reference Curve）</div>
+      </div>
+      <div class="card">
+        <h3>③ 就绪检查</h3>
+        <div class="kv"><span>探头预热</span><b style="color:var(--brand)">✓ 186℃</b></div>
+        <div class="kv"><span>配方与参考曲线</span><b style="color:var(--brand)">✓ 已载入</b></div>
+        <div class="kv"><span>批次间隔计时</span><b id="bbt">00:00（上一锅 DROP 起）</b></div>
+        <div class="player" style="margin-top:10px;border:none;padding:0;background:transparent;">
+          <button class="bigbtn start" onclick="go(2)">▶ 开始烘焙</button>
+          <span class="note">30 秒内入豆并记录 CHARGE（Cropster 行为；原 START 语义）</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 屏2：烘焙主屏 ═══════════ -->
+<div class="screen" id="scr2">
+  <div class="topnav">
+    <span class="logo">● 烘焙智能</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙准备</button>
+    <button class="on" onclick="go(2,this)">烘焙主屏</button>
+    <button onclick="go(3,this)">结束与复盘</button>
+    <button onclick="go(4,this)">曲线库·对比</button>
+    <button onclick="go(5,this)">偏好设置</button>
+    <span class="spacer"></span>
+    <span class="badge">智能预测</span>
+    <div class="toggle on" onclick="this.classList.toggle('on');toast('Smart Predictions 开关（RI 同款）：曲线预测/一爆预测/Flick 预警')"></div>
+    <button onclick="document.body.classList.toggle('dark')">◑ 明/暗</button>
+  </div>
+
+  <div class="workspace">
+    <div class="chart-card">
+      <!-- 主图表：点击任意处弹备注（Cropster click-to-comment） -->
+      <div class="card" style="padding:8px;cursor:crosshair;" onclick="openComment(event)" id="mainChartCard">
+        <canvas id="chart-main" height="400"></canvas>
+        <div style="display:flex;gap:14px;padding:6px 8px 2px;flex-wrap:wrap;">
+          <span class="lg"><i style="background:var(--bt)"></i>豆温 BT</span>
+          <span class="lg"><i style="background:var(--et)"></i>风温 ET</span>
+          <span class="lg"><i style="background:var(--ror)"></i>RoR</span>
+          <span class="lg"><i style="background:var(--ref);height:2px;border-top:2px dashed var(--ref);background:none"></i>参考曲线</span>
+          <span class="note" style="margin:0;">点击图表任意处 → 添加备注/操作/事件（Cropster click-to-comment，替代原 ActionPanel 表单）· 悬停曲线可精确读值（RI5 Discover Curves' Values）</span>
+        </div>
+      </div>
+      <!-- 调制阶段图（Modulation Chart + 阶段计时） -->
+      <div class="card">
+        <h3>调制阶段图<span class="badge src">RI4 Modulation Chart · 对应原发展阶段指标/阶段时间</span>
+          <span style="font-size:11.5px;color:var(--dim);font-weight:400;">总时长 <b style="font-family:Consolas">11:40</b> · 阶段计时：脱水 03:12 → 美拉德 03:20 → 发展 <b id="devt">01:10</b></span></h3>
+        <div class="phasebar">
+          <div style="width:28%;background:#38bdf8;">脱水 28%</div>
+          <div style="width:41%;background:#f59e0b;">美拉德 41%</div>
+          <div style="width:31%;background:var(--brand);">发展 31%</div>
+        </div>
+        <div class="mod-rows" style="margin-top:8px;">
+          <div class="r"><span>参考：脱水 28% / 美拉德 42% / 发展 30%</span><span style="color:var(--brand)">偏差在容差内</span></div>
+          <div class="r"><span>DTR（发展时间比）</span><span><b style="font-family:Consolas;color:var(--txt)">18.2%</b>（目标 16–20%）</span></div>
+        </div>
+      </div>
+      <!-- 事件胶囊条 + 流媒体按钮 -->
+      <div class="card">
+        <h3>事件<span class="tag">原：EventPanel 8 类 · 撤销=右键 · DROP 锁定</span></h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="pill done">CHARGE<small>00:00 · 198.5°</small></div>
+          <div class="pill done">回温点<small>01:15 · 自动</small></div>
+          <div class="pill done">转黄<small>04:27 · 152.3°</small></div>
+          <div class="pill" onclick="pillDone(this)">一爆开始<small>预测 08:56</small></div>
+          <div class="pill" onclick="pillDone(this)">一爆结束</div>
+          <div class="pill" onclick="pillDone(this)">二爆开始</div>
+          <div class="pill" onclick="pillDone(this)">二爆结束</div>
+          <div class="pill" onclick="pillDone(this,true)">出锅 DROP<small>记录后锁定</small></div>
+        </div>
+      </div>
+      <div class="player">
+        <button class="bigbtn gray" onclick="toast('CHARGE：立即记录入豆事件')">CHARGE 入豆</button>
+        <button class="bigbtn stop" onclick="go(3)">■ 结束烘焙</button>
+        <span class="note">Cropster RI4 流媒体式按钮：结束需在 3 秒内二次确认（可关）· 对应原 OFF/结束语义</span>
+      </div>
+    </div>
+
+    <!-- 可折叠测量侧栏 -->
+    <div class="sidebar" id="sidebar">
+      <div class="card">
+        <h3>测量读数<span class="tag" style="cursor:pointer" onclick="document.getElementById('sidebar').classList.toggle('hidden');setTimeout(()=>drawMain(),50)">⇤ 折叠侧栏</span></h3>
+        <div class="meas"><span><span class="sw" style="background:var(--et)"></span>风温 ET</span><b>186.4°</b></div>
+        <div class="meas"><span><span class="sw" style="background:var(--bt)"></span>豆温 BT</span><b>152.8°</b></div>
+        <div class="meas"><span><span class="sw" style="background:var(--ror)"></span>RoR</span><b>12.6°/m</b></div>
+        <div class="meas"><span><span class="sw" style="background:var(--ref)"></span>参考偏差</span><b style="color:var(--brand)">-1.2°</b></div>
+        <div class="meas"><span>回温点</span><b>92.1° @01:15</b></div>
+        <div class="meas"><span>发展期</span><b>01:10</b></div>
+        <div class="meas"><span>采样质量</span><b style="color:var(--brand)">良好</b></div>
+        <div class="meas"><span>燃气（机台读数）</span><b>45%</b></div>
+        <div class="note">卡片可拖拽重排（RI5 Reorder Measurements）；机台读数（燃气/风门/转速）对应原归一化曲线数据源</div>
+      </div>
+      <div class="card">
+        <h3>智能预测<span class="tag">原：milestone_forecast + RoR 预测</span></h3>
+        <div class="kv"><span>一爆预测</span><b>08:56 · 192°</b></div>
+        <div class="kv"><span>豆温/RoR 未来 2 分钟</span><b style="color:var(--brand)">已绘制虚线</b></div>
+        <div class="kv"><span>Flick 预警</span><b style="color:var(--warn)">监视中</b></div>
+        <div class="note">接近 Flick（RoR 拐点回升）时图上弹出预警气泡（Cropster Flick prediction 模态）</div>
+      </div>
+      <div class="card">
+        <h3>参考备注<span class="tag">原：背景曲线事件</span></h3>
+        <div style="font-size:11.5px;color:var(--dim);line-height:1.9;">
+          01:15 回温点 · 04:30 转黄 · 09:00 一爆<br>
+          <span style="opacity:.6">（已过的参考备注自动隐藏 — Cropster Hide past reference comments，可关）</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 屏3：结束与复盘 ═══════════ -->
+<div class="screen" id="scr3">
+  <div class="topnav">
+    <span class="logo">● 烘焙智能</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙准备</button>
+    <button onclick="go(2,this)">烘焙主屏</button>
+    <button class="on" onclick="go(3,this)">结束与复盘</button>
+    <button onclick="go(4,this)">曲线库·对比</button>
+    <button onclick="go(5,this)">偏好设置</button>
+    <span class="spacer"></span>
+    <button onclick="document.body.classList.toggle('dark')">◑ 明/暗</button>
+  </div>
+  <h2 class="scr-title">烘焙结束与复盘<span class="badge src">原：批次保存 + BatchInfoDialog + ReplayWindow</span></h2>
+  <div class="two-col" style="margin-bottom:10px;">
+    <div class="card">
+      <h3>结束确认（Cropster 收尾流程）<span class="tag">Between Batch Timer</span></h3>
+      <div class="kv"><span>出锅重量</span><b><input value="274" style="width:70px;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--txt);"> g</b></div>
+      <div class="kv"><span>失重</span><b>14.4%（自动计算）</b></div>
+      <div class="kv"><span>烘焙度色值</span><b><input value="62" style="width:70px;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--txt);"> Agtron</b></div>
+      <div class="kv"><span>烘焙备注</span><b><input placeholder="风味观察…" style="width:200px;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--txt);"></b></div>
+      <button class="btn-sm" onclick="toast('批次已保存 → 曲线库（原 database 存档）')">保存批次</button>
+      <button class="btn-sm ghost" onclick="toast('批次间隔计时已启动（Between Batch Timer）')">下一锅计时</button>
+      <div class="note">自动结束检测：开风门降温即自动 DROP（可关，原 DROP 事件可自动/手动）</div>
+    </div>
+    <div class="card">
+      <h3>复盘回放<span class="tag">原：ReplayWindow · Smart Replay 理念</span></h3>
+      <div style="border-radius:10px;overflow:hidden;"><canvas id="chart-re" height="220"></canvas></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <button class="btn-sm ghost" onclick="this.textContent=this.textContent==='▶'?'⏸':'▶'">▶</button>
+        <input type="range" min="0" max="700" value="462" style="flex:1" oninput="this.nextElementSibling.textContent=Math.floor(this.value/60)+':'+String(this.value%60).padStart(2,'0')">
+        <b style="font-family:Consolas">07:42</b>
+        <select style="padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--txt);"><option>0.5×</option><option>1×</option><option>2×</option><option>4×</option></select>
+      </div>
+      <div class="note">滑杆重演含操作标注；悬停曲线读精确值（RI5）</div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>批次指标卡<span class="tag">原：analysis/development/curvature/sample_quality</span></h3>
+    <div class="grid2">
+      <div class="kv"><span>回温点 TP</span><b>92.1° @ 01:15</b></div>
+      <div class="kv"><span>转黄 / 一爆</span><b>04:27 / 08:56</b></div>
+      <div class="kv"><span>总时长 / DTR</span><b>11:40 / 18.2%</b></div>
+      <div class="kv"><span>RoR 峰值 / 终值</span><b>31.5 / 3.8 °/m</b></div>
+      <div class="kv"><span>曲率 AUC</span><b>0.86</b></div>
+      <div class="kv"><span>采样质量</span><b style="color:var(--brand)">良好</b></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 屏4：曲线库·对比 ═══════════ -->
+<div class="screen" id="scr4">
+  <div class="topnav">
+    <span class="logo">● 烘焙智能</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙准备</button>
+    <button onclick="go(2,this)">烘焙主屏</button>
+    <button onclick="go(3,this)">结束与复盘</button>
+    <button class="on" onclick="go(4,this)">曲线库·对比</button>
+    <button onclick="go(5,this)">偏好设置</button>
+    <span class="spacer"></span>
+    <button onclick="document.body.classList.toggle('dark')">◑ 明/暗</button>
+  </div>
+  <h2 class="scr-title">曲线库与对比报告<span class="badge src">原：CompareWindow + 批次记录 + 四类导出</span></h2>
+  <div class="workspace">
+    <div class="chart-card">
+      <div class="card" style="padding:8px;">
+        <canvas id="chart-cmp" height="330"></canvas>
+      </div>
+      <div class="card">
+        <h3>对比报告<span class="tag">Roast Compare Report</span></h3>
+        <table>
+          <tr><th>批次</th><th>TP</th><th>转黄</th><th>一爆</th><th>总时长</th><th>DTR</th><th>RoR峰值</th><th>曲率差</th></tr>
+          <tr><td><b>#0321</b> 基准</td><td>92.1</td><td>04:27</td><td>08:56</td><td>11:40</td><td>18.2%</td><td>31.5</td><td>—</td></tr>
+          <tr><td>#0319</td><td>91.8</td><td>04:31</td><td>09:02</td><td>11:48</td><td>18.9%</td><td>30.8</td><td>0.012</td></tr>
+          <tr><td>#0298</td><td>93.4</td><td>04:02</td><td>08:21</td><td>10:55</td><td>16.4%</td><td>34.2</td><td>0.087</td></tr>
+        </table>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button class="btn-sm" onclick="toast('导出 CSV（原 export.csv）')">CSV</button>
+          <button class="btn-sm" onclick="toast('导出 JSON（原 export.json）')">JSON</button>
+          <button class="btn-sm" onclick="toast('导出 TXT（原 export.txt）')">TXT</button>
+          <button class="btn-sm" onclick="toast('导出 PDF 报告（原 export.report）')">PDF 报告</button>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar">
+      <div class="card">
+        <h3>曲线库</h3>
+        <label style="display:block;padding:6px 0;font-size:12.5px;"><input type="checkbox" checked> #0321 耶加 日晒 ★基准</label>
+        <label style="display:block;padding:6px 0;font-size:12.5px;"><input type="checkbox" checked> #0319 耶加 日晒</label>
+        <label style="display:block;padding:6px 0;font-size:12.5px;"><input type="checkbox" checked> #0298 哥伦 水洗</label>
+        <label style="display:block;padding:6px 0;font-size:12.5px;"><input type="checkbox"> #0287 耶加 日晒</label>
+        <div class="note">勾选即叠加（原 CompareWindow 语义）；可另存为配方供烘焙前引用</div>
+      </div>
+      <div class="card">
+        <h3>历史批次</h3>
+        <table style="font-size:11.5px;">
+          <tr><th>批次</th><th>豆种</th><th>时长</th></tr>
+          <tr><td>0827-03</td><td>耶加 日晒</td><td>11:40</td></tr>
+          <tr><td>0826-11</td><td>哥伦 水洗</td><td>10:55</td></tr>
+          <tr><td>0826-10</td><td>耶加 日晒</td><td>11:52</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 屏5：偏好设置 ═══════════ -->
+<div class="screen" id="scr5">
+  <div class="topnav">
+    <span class="logo">● 烘焙智能</span>
+    <button onclick="go(0,this)">方案总览</button>
+    <button onclick="go(1,this)">烘焙准备</button>
+    <button onclick="go(2,this)">烘焙主屏</button>
+    <button onclick="go(3,this)">结束与复盘</button>
+    <button onclick="go(4,this)">曲线库·对比</button>
+    <button class="on" onclick="go(5,this)">偏好设置</button>
+    <span class="spacer"></span>
+    <button onclick="document.body.classList.toggle('dark')">◑ 明/暗</button>
+  </div>
+  <h2 class="scr-title">偏好设置<span class="badge src">左下齿轮入口（Cropster Preferences）· 原三个设置对话框合并</span></h2>
+  <div class="card" style="max-width:900px;">
+    <div class="steps">
+      <div class="step"><div class="n"></div><div><b>系统</b><div class="note">语言 / 单位（℃·℃/min·g）/ 明暗主题（原双主题）</div></div></div>
+      <div class="step"><div class="n"></div><div><b>图表与坐标轴</b><div class="note">X 轴时长、温度轴 Min/Max、RoR 轴 Min/Max、一键重置（原 AxisSettingsDialog）</div></div></div>
+      <div class="step"><div class="n"></div><div><b>曲线与读数</b><div class="note">12 条曲线可见性、线宽、侧栏测量卡重排、机台读数精简模式（原 DisplaySettingsDialog + RI Measurement readouts）</div></div></div>
+      <div class="step"><div class="n"></div><div><b>RoR</b><div class="note">推荐 / 灵敏 / 无平滑 三档（对应原三路 RoR 采样窗），时间单位 ℃/min 或 ℃/30s</div></div></div>
+      <div class="step"><div class="n"></div><div><b>事件与备注</b><div class="note">按豆温自动标注转黄/一爆/二爆（原 ETA 目标温度）、历史参考备注自动隐藏、图表点击行为（备注/事件）</div></div></div>
+      <div class="step"><div class="n"></div><div><b>烘焙机</b><div class="note">串口与协议（三协议自动识别）、CH1-4 通道映射、断线重连、滑杆控制位置（顶部/底部，若机台可控）</div></div></div>
+      <div class="step" style="border-bottom:none;"><div class="n"></div><div><b>诊断</b><div class="note">调试日志开关、生成诊断包（原 debug logger + diagnostics）</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 点击图表弹出的备注框（Cropster click-to-comment） -->
+<div class="comment-pop" id="cpop">
+  <b style="font-size:12.5px;">添加备注 @ 图表位置</b>
+  <select><option>操作备注（调火/调风）</option><option>事件：转黄</option><option>事件：一爆开始</option><option>自由备注</option></select>
+  <input placeholder="内容…（如：燃气 60→45）">
+  <button class="btn-sm" onclick="closeComment()">记录</button>
+  <button class="btn-sm ghost" style="margin-left:6px;" onclick="closeComment()">取消</button>
+</div>
+<div id="toast"></div>
+
+<script>
+function go(n,btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('scr'+n).classList.add('active');
+  if(btn){btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+  window.scrollTo(0,0);
+  if(n===1)drawById('chart-pre',{frac:1,ref:true,events:[{t:1.25,n:'TP'},{t:4.45,n:'转黄'},{t:8.93,n:'一爆'},{t:11.6,n:'DROP'}],title:'参考曲线 · 耶加雪菲标准批 #0321'});
+  if(n===2)drawMain();
+  if(n===3)drawById('chart-re',{frac:.66,cursor:true,ref:true,events:[{t:1.25,n:'TP'},{t:4.45,n:'转黄'}],title:'回放 #20260827-03'});
+  if(n===4)drawById('chart-cmp',{frac:1,ref:true,multi:true,events:[{t:1.25,n:'TP'},{t:4.45,n:'转黄'},{t:8.93,n:'FCs'}],title:'曲线库叠加对比 · 勾选侧栏批次'});
+}
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2400);}
+function pillDone(el,drop){
+  if(el.classList.contains('lock')){toast('DROP 已锁定（原锁定语义）');return;}
+  if(el.classList.contains('done')){toast('右键/长按 → 撤销或重录（原 undo/redo）');return;}
+  el.classList.add('done');el.querySelector('small').textContent='已记录';
+  if(drop){el.classList.remove('done');el.classList.add('lock');toast('DROP 记录并锁定 → 进入结束流程');}
+}
+function openComment(e){
+  const p=document.getElementById('cpop');
+  p.style.display='block';
+  p.style.left=Math.min(window.innerWidth-280,e.clientX+10)+'px';
+  p.style.top=Math.min(window.innerHeight-220,e.clientY-40)+'px';
+}
+function closeComment(){document.getElementById('cpop').style.display='none';toast('已记录到图表标注（对应原 ActionPanel 操作记录）');}
+
+/* 曲线数据与绘制 */
+function roastData(frac=1){
+  const btT=t=>t<1.25?198.5-(198.5-92.1)*(t/1.25):92.1+(1-Math.exp(-(t-1.25)/3.2))*118*(1-(t-1.25)/14.5);
+  const etT=t=>t<1.25?205-(205-160)*(t/1.25):160+(1-Math.exp(-(t-1.25)/2.6))*88*(1-(t-1.25)/15.5);
+  const pts=[];
+  for(let t=0;t<=11.67*60*frac;t+=6){
+    const m=t/60,b=btT(Math.min(m,11.67)),prev=btT(Math.max(0,m-0.5));
+    pts.push([m,b,etT(Math.min(m,11.67)),Math.max(0,(b-prev)/0.5)]);
+  }
+  return pts;
+}
+function drawById(id,o){drawChart(document.getElementById(id),o);}
+function drawMain(){drawChart(document.getElementById('chart-main'),{frac:.66,cursor:true,predict:true,ref:true,events:[{t:0,n:'CHARGE'},{t:1.25,n:'TP'},{t:4.45,n:'转黄'},{t:8.93,n:'一爆·预测'}],title:'批次 #20260827-03 · 耶加雪菲 日晒 · 参考叠加 + 智能预测'});}
+function drawChart(cv,opts){
+  if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const W=cv.width=cv.clientWidth*2,H=cv.height=cv.getAttribute('height')*2;
+  cv.style.height=cv.getAttribute('height')+'px';
+  const dark=document.body.classList.contains('dark');
+  const bg=dark?'#212b2a':'#ffffff',grid=dark?'#33413f':'#eef2f1',txt=dark?'#8fa09d':'#8a9795';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const L=64,R=W-70,T=30,B=H-36,tMax=12,yMin=40,yMax=250,rMax=40;
+  const X=t=>L+t/tMax*(R-L),Y=v=>B-(v-yMin)/(yMax-yMin)*(B-T),Yr=v=>B-(v/rMax)*(B-T);
+  ctx.strokeStyle=grid;ctx.fillStyle=txt;ctx.font='20px Consolas';ctx.lineWidth=1;
+  for(let g=yMin;g<=yMax;g+=40){ctx.beginPath();ctx.moveTo(L,Y(g));ctx.lineTo(R,Y(g));ctx.stroke();ctx.fillText(g+'°',8,Y(g)+8);}
+  for(let g=0;g<=rMax;g+=10)ctx.fillText(g+'',R+10,Yr(g)+8);
+  for(let t=0;t<=tMax;t+=2){ctx.beginPath();ctx.moveTo(X(t),T);ctx.lineTo(X(t),B);ctx.stroke();ctx.fillText(t+'m',X(t)-12,H-12);}
+  const data=roastData(opts.frac||1),cut=data.length;
+  const line=(idx,color,yfn,dash,w)=>{
+    ctx.strokeStyle=color;ctx.lineWidth=w||4;ctx.setLineDash(dash||[]);
+    ctx.lineJoin='round';ctx.beginPath();
+    data.forEach((p,i)=>i===0?ctx.moveTo(X(p[0]),yfn(p[idx])):ctx.lineTo(X(p[0]),yfn(p[idx])));
+    ctx.stroke();ctx.setLineDash([]);
+  };
+  if(opts.ref)line(1,'#9aa5a3',Y,[12,9],3);
+  if(opts.multi){line(1,'#5eead4',Y,null,3);line(1,'#93c5fd',Y,[16,8],3);}
+  line(2,'#0ea5e9',Y);line(1,'#f59e0b',Y);line(3,'#8b5cf6',Yr,null,3.5);
+  if(opts.predict){ctx.strokeStyle='#00a67d';ctx.lineWidth=4;ctx.setLineDash([7,9]);ctx.beginPath();
+    const s=Math.floor(cut*.85);
+    for(let i=s;i<Math.min(cut+18,data.length);i++){const p=data[i];i===s?ctx.moveTo(X(p[0]),Y(p[1])):ctx.lineTo(X(p[0]),Y(p[1]));}
+    ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#00a67d';ctx.font='bold 20px "Segoe UI"';ctx.fillText('未来2分钟预测 →',X(data[Math.min(cut+17,data.length-1)][0])-190,Y(data[Math.min(cut+17,data.length-1)][1])-16);
+  }
+  (opts.events||[]).forEach(ev=>{
+    ctx.strokeStyle='rgba(245,158,11,.5)';ctx.lineWidth=2;ctx.setLineDash([5,7]);
+    ctx.beginPath();ctx.moveTo(X(ev.t),T);ctx.lineTo(X(ev.t),B);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#b45309';ctx.font='bold 20px "Segoe UI"';ctx.fillText(ev.n,X(ev.t)+7,T+22);
+  });
+  if(opts.cursor){const p=data[cut-1];
+    ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(X(p[0]),Y(p[1]),8,0,7);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+    ctx.fillStyle=dark?'#e6edeb':'#253331';ctx.font='bold 23px Consolas';
+    ctx.fillText(p[1].toFixed(1)+'°',X(p[0])+14,Y(p[1])-14);
+  }
+  if(opts.title){ctx.fillStyle=txt;ctx.font='20px "Segoe UI"';ctx.fillText(opts.title,L,20);}
+}
+window.addEventListener('resize',()=>{const a=document.querySelector('.screen.active');
+  if(a.id==='scr2')drawMain();if(a.id==='scr1')drawById('chart-pre',{frac:1,ref:true,events:[{t:1.25,n:'TP'},{t:4.45,n:'转黄'},{t:8.93,n:'一爆'},{t:11.6,n:'DROP'}],title:'参考曲线 · 耶加雪菲标准批 #0321'});
+  if(a.id==='scr3')drawById('chart-re',{frac:.66,cursor:true,ref:true,events:[{t:1.25,n:'TP'},{t:4.45,n:'转黄'}],title:'回放 #20260827-03'});
+  if(a.id==='scr4')drawById('chart-cmp',{frac:1,ref:true,multi:true,events:[{t:1.25,n:'TP'},{t:4.45,n:'转黄'},{t:8.93,n:'FCs'}],title:'曲线库叠加对比 · 勾选侧栏批次'});});
+drawMain();
+</script>
+</body>
+</html>

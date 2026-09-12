@@ -1,0 +1,1 @@
+"""PySide6 widgets for 烘焙软件."""

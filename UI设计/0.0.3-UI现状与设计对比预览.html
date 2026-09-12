@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>烘焙软件 v0.0.3 UI 现状 vs 设计预期 对比预览</title>
+<style>
+:root{
+  --bg:#1f2023; --panel:#282a2e; --panel2:#323438;
+  --line:#3d4046; --line-soft:#33363b;
+  --txt:#e9e7e2; --dim:#a6a49e; --faint:#7d7b76;
+  --accent:#f0a83f; --accent-dim:#c98a2e; --accent-soft:rgba(240,168,63,.14);
+  --ok:#6fce7f; --danger:#e6646a; --warn:#e89b5a;
+  --info:#54cbe8;
+  --lcd-bg:#141519; --lcd-on:#ffb648;
+  --mono:"Cascadia Code",Consolas,"Courier New",monospace;
+  --radius:8px; --radius-s:6px;
+  --shadow:0 1px 2px rgba(0,0,0,.28),0 2px 10px rgba(0,0,0,.16);
+  --shadow-lift:0 2px 4px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.22);
+  --t-fast:.14s ease;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI","Microsoft YaHei",sans-serif;}
+body{background:var(--bg);color:var(--txt);font-size:13px;padding:14px 16px 24px;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--panel2);border-radius:5px;border:2px solid var(--bg);}
+h1{font-size:20px;font-weight:700;letter-spacing:.3px;margin-bottom:6px;}
+h1 .v{color:var(--accent);font-family:var(--mono);font-size:14px;margin-left:8px;}
+.subtitle{color:var(--dim);font-size:12.5px;margin-bottom:14px;line-height:1.7;}
+.section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px;box-shadow:var(--shadow);}
+.section h2{font-size:14px;font-weight:600;color:var(--accent);letter-spacing:.8px;margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;}
+.section h2 .meta{font-size:11px;color:var(--faint);font-weight:400;font-family:var(--mono);letter-spacing:.3px;}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.col{background:var(--panel2);border:1px solid var(--line-soft);border-radius:var(--radius-s);padding:10px;}
+.col h3{font-size:12.5px;font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.col.cur h3{color:var(--warn);}
+.col.exp h3{color:var(--ok);}
+.col .tag{font-size:10px;font-family:var(--mono);color:var(--faint);font-weight:400;letter-spacing:.3px;}
+
+/* 屏幕模拟画布 */
+.canvas{background:var(--lcd-bg);border:1px solid #000;border-radius:var(--radius-s);padding:6px;font-family:var(--mono);font-size:10.5px;color:var(--dim);overflow:hidden;position:relative;min-height:280px;}
+.canvas .row{display:flex;gap:4px;margin-bottom:4px;align-items:center;flex-wrap:wrap;}
+.canvas .blk{background:var(--panel2);border:1px solid var(--line-soft);border-radius:3px;padding:4px 6px;font-size:9.5px;line-height:1.3;}
+.canvas .blk.amber{background:rgba(240,168,63,.18);border-color:var(--accent);color:var(--lcd-on);}
+.canvas .blk.green{background:rgba(111,206,127,.16);border-color:var(--ok);color:var(--ok);}
+.canvas .blk.red{background:rgba(230,100,106,.18);border-color:var(--danger);color:var(--danger);}
+.canvas .blk.cyan{background:rgba(84,203,232,.14);border-color:var(--info);color:var(--info);}
+.canvas .blk.dim{opacity:.55;border-style:dashed;}
+.canvas .chart{background:#0a0b0d;border:1px solid #000;border-radius:3px;height:120px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:9.5px;position:relative;}
+.canvas .chart .axis-l,.canvas .chart .axis-r{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.08);}
+.canvas .chart .axis-l{left:18px;} .canvas .chart .axis-r{right:18px;}
+.canvas .chart .grid{position:absolute;inset:6px 24px 14px 24px;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:30px 20px;}
+
+/* 差异点列表 */
+.diff-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;}
+.diff-item{background:var(--panel2);border-left:3px solid var(--warn);border-radius:0 var(--radius-s) var(--radius-s) 0;padding:8px 10px;}
+.diff-item.sev-high{border-left-color:var(--danger);}
+.diff-item.sev-mid{border-left-color:var(--warn);}
+.diff-item.sev-low{border-left-color:var(--info);}
+.diff-item h4{font-size:12px;font-weight:600;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
+.diff-item h4 .sev{font-size:10px;font-family:var(--mono);color:var(--faint);font-weight:400;}
+.diff-item p{font-size:11.5px;color:var(--dim);line-height:1.65;}
+.diff-item code{background:rgba(255,255,255,.05);padding:1px 4px;border-radius:2px;font-family:var(--mono);font-size:10.5px;color:var(--lcd-on);}
+.diff-item .refs{font-size:10.5px;color:var(--faint);margin-top:4px;font-family:var(--mono);}
+
+table.func-map{width:100%;border-collapse:collapse;margin-top:8px;font-size:11.5px;}
+table.func-map th,table.func-map td{padding:6px 8px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top;}
+table.func-map th{background:var(--panel2);color:var(--accent);font-weight:600;letter-spacing:.5px;}
+table.func-map td{color:var(--dim);}
+table.func-map tr:hover td{background:var(--panel2);}
+table.func-map .ok{color:var(--ok);}
+table.func-map .warn{color:var(--warn);}
+table.func-map .bad{color:var(--danger);}
+table.func-map .mono{font-family:var(--mono);font-size:10.5px;}
+
+.legend-bar{display:flex;gap:14px;font-size:11px;color:var(--dim);margin:8px 0 12px;flex-wrap:wrap;}
+.legend-bar .it{display:flex;align-items:center;gap:5px;}
+.legend-bar .sw{width:10px;height:10px;border-radius:2px;}
+
+.callout{border-left:3px solid var(--accent);background:var(--panel2);padding:10px 12px;border-radius:0 var(--radius-s) var(--radius-s) 0;font-size:12px;line-height:1.7;margin:8px 0;}
+.callout b{color:var(--accent);}
+.note{font-size:11px;color:var(--faint);margin-top:6px;line-height:1.65;}
+
+/* 标注 */
+.mark{position:absolute;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:2px;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,.4);z-index:5;}
+.mark.ok{background:var(--ok);color:#000;}
+.mark.warn{background:var(--warn);color:#000;}
+.mark.info{background:var(--info);color:#000;}
+
+/* 工具栏/事件条模拟 */
+.tb-row{display:flex;gap:3px;flex-wrap:wrap;}
+.tb-row .b{background:var(--btn,#3a3d42);border:1px solid var(--line);border-radius:3px;padding:3px 8px;font-size:9.5px;line-height:1.2;}
+.tb-row .b.act{background:var(--accent);color:#000;font-weight:700;}
+.tb-row .b.arr::after{content:"▾";margin-left:4px;opacity:.7;}
+.tb-row .sep{width:1px;background:var(--line);margin:2px 3px;}
+.event-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:3px;}
+.event-grid .e{background:var(--btn);border:1px dashed var(--line);border-radius:3px;padding:5px 4px;text-align:center;font-size:9.5px;}
+.event-grid .e.on{background:rgba(240,168,63,.18);border:1px solid var(--accent);color:var(--lcd-on);}
+.event-grid .e.drop{background:var(--danger);color:#fff;border:1px solid var(--danger);font-weight:700;}
+.event-strip{display:flex;gap:3px;}
+.event-strip .e{flex:1;background:var(--btn);border:1px dashed var(--line);border-radius:3px;padding:5px 2px;text-align:center;font-size:9px;line-height:1.15;}
+.event-strip .e.on{background:rgba(240,168,63,.18);border:1px solid var(--accent);color:var(--lcd-on);}
+.event-strip .e.drop{background:var(--danger);color:#fff;border:1px solid var(--danger);font-weight:700;}
+
+/* LCD 模拟卡 */
+.lcd-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:4px;}
+.lcd{background:linear-gradient(180deg,#1b1c21 0%,var(--lcd-bg) 100%);border:1px solid #000;border-radius:3px;padding:4px 6px;}
+.lcd .lab{color:#8b877c;font-size:8px;letter-spacing:1px;text-transform:uppercase;}
+.lcd .val{font-family:var(--mono);font-size:13px;color:var(--lcd-on);font-weight:700;text-align:right;line-height:1.1;text-shadow:0 0 8px rgba(255,182,72,.35);}
+.lcd .sub{color:#5f5c54;font-size:8px;text-align:right;letter-spacing:.3px;}
+.lcd.et .val{color:#54cbe8;text-shadow:0 0 8px rgba(84,203,232,.35);}
+.lcd.bt .val{color:#ffa03a;text-shadow:0 0 8px rgba(255,160,58,.35);}
+.lcd.ror .val{color:#c98bf0;text-shadow:0 0 8px rgba(201,139,240,.35);}
+.lcd.ok .val{color:#6fce7f;text-shadow:0 0 8px rgba(111,206,127,.35);}
+.lcd.it .val{color:#5ba8e0;}
+.lcd.ex .val{color:#e89b5a;}
+.lcd .val.txt{font-size:9.5px;color:var(--ok);font-weight:400;letter-spacing:.5px;}
+
+/* 工作区 */
+.ws{display:grid;grid-template-columns:132px 1fr 240px;gap:6px;height:240px;}
+.ws .l,.ws .c,.ws .r{background:var(--panel2);border:1px solid var(--line-soft);border-radius:3px;padding:6px;font-size:9.5px;}
+.ws .l .ph{color:var(--accent);font-weight:700;font-size:10px;margin-bottom:4px;}
+.ws .r .ph{color:var(--accent);font-weight:700;font-size:10px;margin-bottom:4px;}
+.ws .ctrl{margin-bottom:5px;}
+.ws .ctrl .lbl{font-size:9px;color:var(--dim);}
+.ws .ctrl .v{font-family:var(--mono);color:var(--lcd-on);font-size:9.5px;}
+.ws .bar{height:4px;background:var(--track,#45484e);border-radius:2px;margin-top:2px;}
+.ws .bar i{display:block;height:100%;background:var(--accent);border-radius:2px;}
+.ws .bar.b-c i{background:#3fb6c9;} .ws .bar.b-d i{background:#9d7bdc;}
+
+.legend-chk{display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;font-size:9px;color:var(--dim);}
+.legend-chk .chk{display:flex;align-items:center;gap:3px;}
+.legend-chk .sw{width:8px;height:8px;border-radius:1px;}
+
+/* 标题层级对比 */
+.toc{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.toc .item{background:var(--panel2);border:1px solid var(--line-soft);border-radius:var(--radius-s);padding:8px 10px;}
+.toc .item .n{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);line-height:1;}
+.toc .item .l{font-size:11px;color:var(--dim);margin-top:3px;line-height:1.4;}
+.toc .item.bad .n{color:var(--danger);}
+.toc .item.warn .n{color:var(--warn);}
+.toc .item.ok .n{color:var(--ok);}
+</style>
+</head>
+<body>
+
+<h1>烘焙软件 v0.0.3 — UI 现状与设计预期对比预览 <span class="v">/ readonly analysis</span></h1>
+<p class="subtitle">
+  本预览基于对 <code style="font-family:var(--mono);color:var(--lcd-on);">app/ui/main_window.py · action_panel.py · event_panel.py · target_panel.py · curve_widget.py</code> 的静态读取，
+  参照 <code style="font-family:var(--mono);color:var(--lcd-on);">UI设计指导文档.md</code> 还原当前 UI 实际结构并逐项对照设计预期。
+  本次仅分析，<b>未改动任何源码、资源或配置文件</b>。
+</p>
+
+<!-- 0. 总览 -->
+<div class="toc">
+  <div class="item warn"><div class="n">2</div><div class="l">顶部 UI 层次<b>重复</b>（菜单栏 + 工具栏 + 新导航 三层叠加）</div></div>
+  <div class="item warn"><div class="n">9+</div><div class="l">图表控制栏控件过载，挤占图表空间</div></div>
+  <div class="item bad"><div class="n">2×4</div><div class="l">事件按钮 2 列网格，违背「8 列横向事件条」设计</div></div>
+  <div class="item warn"><div class="n">3</div><div class="l">发展期 DTR、回温点 TP 等 LCD 卡含中文占位文字，违背「等宽数字」原则</div></div>
+  <div class="item ok"><div class="n">8</div><div class="l">LCD 读数带 8 张卡（ET/BT/RoR/时间/TP/DTR/进风温/排风温）已就位 ✓</div></div>
+  <div class="item ok"><div class="n">✓</div><div class="l">燃气 mbar、风门/转速 1–10 档独立、纯记录语义：已完整实现 ✓</div></div>
+</div>
+
+<!-- 1. 顶部结构对比 -->
+<div class="section">
+  <h2>① 顶部结构：当前（三层叠加） vs 预期（单一导航）<span class="meta">main_window.py L154–281 / L283–385</span></h2>
+  <div class="compare">
+    <!-- 当前 -->
+    <div class="col cur">
+      <h3>当前实现<span class="tag">CUR · 截图红框 A</span></h3>
+      <div class="canvas" style="position:relative;">
+        <div class="mark" style="top:4px;left:6px;">A1 菜单栏</div>
+        <div class="row"><div class="blk">文件</div><div class="blk">设备</div><div class="blk">视图</div><div class="blk">工具</div><div class="blk">帮助</div></div>
+        <div class="mark" style="top:30px;left:6px;">A2 工具栏</div>
+        <div class="row"><div class="blk amber">开始监测</div><div class="blk">结束监测</div><div class="blk sep"></div><div class="blk">新建批次</div><div class="blk">选择采集源</div><div class="blk sep"></div><div class="blk arr">批次菜单</div><div class="blk arr">显示菜单</div><div class="blk arr">曲线工具</div></div>
+        <div class="mark" style="top:60px;left:6px;">A3 新导航</div>
+        <div class="row"><div class="blk amber">HB ROAST</div><div class="blk">烘焙</div><div class="blk">采集</div><div class="blk">对比</div><div class="blk">回放</div><div class="blk">配置</div><div class="blk">档案</div><span style="flex:1"></span><div class="blk">● 待机（未开始）</div><div class="blk">主题</div></div>
+        <div class="note">↑ 三套入口并存：传统 QMenuBar + QToolBar + 新 TopNav，角色重叠（开始/结束、连接、设置等在多处出现）</div>
+      </div>
+    </div>
+    <!-- 预期 -->
+    <div class="col exp">
+      <h3>设计预期<span class="tag">DOC §6.1 · 「单一导航入口」</span></h3>
+      <div class="canvas">
+        <div class="row"><div class="blk amber">HB ROAST</div><div class="blk">烘焙</div><div class="blk">采集</div><div class="blk">对比</div><div class="blk">回放</div><div class="blk">配置</div><div class="blk">档案</div><span style="flex:1"></span><div class="blk">● 待机（未开始）</div><div class="blk">☀ 主题</div></div>
+        <div class="note" style="margin-top:8px;">↑ 仅保留 TopNav 一行；其余入口通过"采集/对比/回放/配置/档案"切换进入对应屏或下钻面板</div>
+        <div class="callout"><b>设计文档依据</b>：§6.1 烘焙主屏 1.「顶部导航栏（Logo + 屏切换按钮 + 主题切换 ☀/🌙）」<br>原文：「菜单栏（文件/设备/视图/工具/帮助，对应原 21 项工具栏动作入口）」属于可选项但<b>不应与传统 QMenuBar 同时显示</b>。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. 采集生命周期按钮位置 -->
+<div class="section">
+  <h2>② 电源按钮组 ON/START/OFF/RESET 位置<span class="meta">main_window.py L515–536</span></h2>
+  <div class="compare">
+    <div class="col cur">
+      <h3>当前实现<span class="tag">CUR · 嵌在 LCD 带右侧</span></h3>
+      <div class="canvas">
+        <div class="lcd-row">
+          <div class="lcd et"><div class="lab">ET</div><div class="val">186.4</div><div class="sub">CH1</div></div>
+          <div class="lcd bt"><div class="lab">BT</div><div class="val">152.8</div><div class="sub">CH2</div></div>
+          <div class="lcd ror"><div class="lab">RoR</div><div class="val">12.6</div><div class="sub">Δ30s</div></div>
+          <div class="lcd ok"><div class="lab">时间</div><div class="val">07:42</div><div class="sub">录制中</div></div>
+        </div>
+        <div class="row" style="align-items:flex-start;">
+          <div class="blk dim">回温点 TP</div>
+          <div class="blk dim">发展期 DTR</div>
+          <div class="blk dim">进风温 CH3</div>
+          <div class="blk dim">排风温 CH4</div>
+          <div class="blk" style="background:rgba(111,206,127,.18);border-color:var(--ok);color:var(--ok);">ON</div>
+          <div class="blk amber">START</div>
+          <div class="blk">OFF</div>
+          <div class="blk">RESET</div>
+        </div>
+        <div class="note">↑ 电源按钮组挤在 LCD 带最右侧、被两组 LCD 顶住，<b>视觉权重被读数带稀释</b></div>
+      </div>
+    </div>
+    <div class="col exp">
+      <h3>设计预期<span class="tag">DOC §6.1 · 右上角电源按钮组</span></h3>
+      <div class="canvas">
+        <div class="lcd-row">
+          <div class="lcd et"><div class="lab">ET</div><div class="val">186.4</div><div class="sub">CH1</div></div>
+          <div class="lcd bt"><div class="lab">BT</div><div class="val">152.8</div><div class="sub">CH2</div></div>
+          <div class="lcd ror"><div class="lab">RoR</div><div class="val">12.6</div><div class="sub">Δ30s</div></div>
+          <div class="lcd ok"><div class="lab">时间</div><div class="val">07:42</div><div class="sub">录制中</div></div>
+        </div>
+        <div class="lcd-row">
+          <div class="lcd ok"><div class="lab">TP</div><div class="val">92.1</div><div class="sub">01:15</div></div>
+          <div class="lcd ok"><div class="lab">DTR</div><div class="val">18.2%</div><div class="sub">03:10</div></div>
+          <div class="lcd it"><div class="lab">进风温</div><div class="val">176.2</div><div class="sub">CH3</div></div>
+          <div class="lcd ex"><div class="lab">排风温</div><div class="val">198.7</div><div class="sub">CH4</div></div>
+        </div>
+        <div class="row" style="margin-top:6px;justify-content:flex-end;gap:4px;">
+          <span style="font-size:9px;color:var(--faint);margin-right:4px;">采集生命周期</span>
+          <div class="blk" style="background:rgba(111,206,127,.18);border-color:var(--ok);color:var(--ok);font-weight:700;">ON</div>
+          <div class="blk amber" style="font-weight:700;">START</div>
+          <div class="blk">OFF</div>
+          <div class="blk">RESET</div>
+        </div>
+        <div class="note">↑ 电源按钮组独占右上角行（4 列）—— Artisan 式语义化电源，<b>与读数带分离、不挤占 LCD 宽度</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. 图表控制栏 -->
+<div class="section">
+  <h2>③ 图表控制栏：当前（9+ 控件） vs 预期（精简）<span class="meta">main_window.py L629–734</span></h2>
+  <div class="compare">
+    <div class="col cur">
+      <h3>当前实现<span class="tag">CUR</span></h3>
+      <div class="canvas" style="min-height:120px;">
+        <div class="row" style="font-size:9.5px;flex-wrap:wrap;gap:3px;">
+          <div class="blk">时间范围</div><div class="blk">0.0 s</div><div class="blk dim">至</div><div class="blk">600.0 s</div><div class="blk">应用范围</div><div class="blk arr">RoR 窗口</div><div class="blk green">自动跟随</div><div class="blk">轴</div><div class="blk">PDF</div><div class="blk arr">曲线显示</div><div class="blk">线宽 标准</div><div class="blk arr">单曲线线宽</div>
+        </div>
+        <div class="note">↑ 12 个元素挤在一行；其中「曲线显示」与右侧"曲线图例"面板<b>功能重复</b>，「单曲线线宽」与「线宽」<b>职责重复</b></div>
+      </div>
+    </div>
+    <div class="col exp">
+      <h3>设计预期<span class="tag">DOC §6.1 · 中栏图表内嵌</span></h3>
+      <div class="canvas" style="min-height:120px;">
+        <div class="row" style="font-size:9.5px;flex-wrap:wrap;gap:3px;align-items:center;">
+          <div class="blk">RoR 窗口 ▾</div>
+          <div class="blk">自动跟随</div>
+          <div class="blk">轴</div>
+          <div class="blk">线宽 ▾</div>
+          <div class="blk">PDF</div>
+          <span style="flex:1"></span>
+          <div class="blk">⌖ 目标转黄 150℃  ·  ⌖ 目标一爆 195℃</div>
+        </div>
+        <div class="note">↑ 精简为 5 个常用项 + 右侧目标摘要；"曲线可见性"完全由右栏"曲线图例"面板承担（12 条 checkbox），不重复入口</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. 事件按钮布局 -->
+<div class="section">
+  <h2>④ 烘焙事件按钮：当前（2×4 网格） vs 预期（横向 8 列条带）<span class="meta">event_panel.py L6–15 / L55–73 / L101–112</span></h2>
+  <div class="compare">
+    <div class="col cur">
+      <h3>当前实现<span class="tag">CUR · event_panel.py 默认 2 列</span></h3>
+      <div class="canvas">
+        <div class="row"><div class="blk">待录：虚线 · 已录：琥珀实线 ● · DROP：红色锁定</div></div>
+        <div class="event-grid">
+          <div class="e on">投豆</div><div class="e">回温点</div>
+          <div class="e">转黄</div><div class="e">一爆开始</div>
+          <div class="e">一爆结束</div><div class="e">二爆开始</div>
+          <div class="e">二爆结束</div><div class="e drop">排豆</div>
+        </div>
+        <div class="row"><div class="blk" style="flex:1;">备注（绑定到下一次事件记录）</div></div>
+        <div class="row"><div class="blk" style="flex:1;min-height:46px;line-height:1.4;">本批次已记录事件列表<br><span style="color:var(--faint)">—空—</span></div></div>
+        <div class="note">↑ 事件按钮被切成 2×4 网格放在事件卡片中，烘焙时需要<b>视线左右大幅跳转</b>才找得到；备注输入框和事件列表也都在同一面板内，争抢空间</div>
+      </div>
+    </div>
+    <div class="col exp">
+      <h3>设计预期<span class="tag">DOC §5.1 · 事件按钮三态 + §6.1 · 底部事件条</span></h3>
+      <div class="canvas">
+        <div class="row"><div class="blk" style="background:rgba(240,168,63,.14);border-color:var(--accent);">⚑ CHARGE 01:30</div>
+          <div class="blk" style="background:rgba(240,168,63,.14);border-color:var(--accent);">⚑ TP 02:45</div>
+          <div class="blk" style="background:rgba(240,168,63,.14);border-color:var(--accent);">⚑ YELLOW 06:12</div>
+          <div class="blk" style="background:rgba(240,168,63,.14);border-color:var(--accent);">⚑ FC_START 09:08</div>
+          <div class="blk" style="background:rgba(240,168,63,.14);border-color:var(--accent);">⚑ FC_END 10:30</div>
+          <div class="blk" style="background:rgba(240,168,63,.14);border-color:var(--accent);">⚑ SC_START 12:55</div>
+          <div class="blk" style="background:rgba(240,168,63,.14);border-color:var(--accent);">⚑ SC_END 13:40</div>
+          <div class="blk" style="background:var(--danger);color:#fff;border-color:var(--danger);font-weight:700;">🔒 DROP</div></div>
+        <div class="event-strip">
+          <div class="e">CHARGE</div><div class="e">TP</div><div class="e">YELLOW</div>
+          <div class="e">FC_START</div><div class="e">FC_END</div><div class="e">SC_START</div>
+          <div class="e">SC_END</div><div class="e drop">DROP</div>
+        </div>
+        <div class="note">↑ Artisan 风格 8 列横向条带：所有事件一屏可见，单击直达、连按撤销；事件列表移到右栏"操作记录"区域，<b>录事件时视线无需跳转</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. LCD 数字卡占位文字 -->
+<div class="section">
+  <h2>⑤ LCD 数字卡：当前（含中文占位） vs 预期（纯数字）<span class="meta">main_window.py L504–511 / 截图对比</span></h2>
+  <div class="compare">
+    <div class="col cur">
+      <h3>当前实现<span class="tag">CUR · 截图 B 区</span></h3>
+      <div class="canvas">
+        <div class="lcd-row">
+          <div class="lcd"><div class="lab">回温点 TP</div><div class="val">--:--</div><div class="sub">--</div></div>
+          <div class="lcd"><div class="lab">发展期 DTR</div><div class="val txt">等待一爆</div><div class="sub">--.- %</div></div>
+          <div class="lcd it"><div class="lab">进风温 CH3</div><div class="val">--.-</div><div class="sub">RoR --.-</div></div>
+          <div class="lcd ex"><div class="lab">排风温 CH4</div><div class="val">--.-</div><div class="sub">RoR --.-</div></div>
+        </div>
+        <div class="note">↑ <b>"等待一爆"</b>这种中文状态文字占据 23px LCD 数值槽位，破坏等宽数字节奏；ET/BT/RoR/时间等卡同理使用 "--.-"</div>
+      </div>
+    </div>
+    <div class="col exp">
+      <h3>设计预期<span class="tag">DOC §3.3 / §5.4 · 纯等宽数字</span></h3>
+      <div class="canvas">
+        <div class="lcd-row">
+          <div class="lcd ok"><div class="lab">回温点 TP</div><div class="val">92.1</div><div class="sub">01:15</div></div>
+          <div class="lcd ok"><div class="lab">发展期 DTR</div><div class="val">18.2%</div><div class="sub">03:10</div></div>
+          <div class="lcd it"><div class="lab">进风温</div><div class="val">176.2</div><div class="sub">CH3</div></div>
+          <div class="lcd ex"><div class="lab">排风温</div><div class="val">198.7</div><div class="sub">CH4</div></div>
+        </div>
+        <div class="note">↑ 数值位永远显示<b>等宽数字或 "--.--"</b>，状态文字移到副标（sub）行；DTR 副标显示分钟/秒，主标永远是百分比</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. 工作区布局 -->
+<div class="section">
+  <h2>⑥ 工作区三栏：当前 vs 预期<span class="meta">main_window.py L402–490 / L571–623</span></h2>
+  <div class="compare">
+    <div class="col cur">
+      <h3>当前实现<span class="tag">CUR · 截图主区</span></h3>
+      <div class="ws">
+        <div class="l">
+          <div class="ph">机台手动操作</div>
+          <div class="note" style="color:var(--warn);font-size:9.5px;">仅记录<br>不向设备发送控制指令</div>
+          <div class="ctrl"><div class="lbl">燃气压力 <span class="v">0.0 mbar</span></div><div class="bar"><i style="width:0%"></i></div><div style="font-size:8.5px;color:var(--faint);text-align:center;">0   25   50</div></div>
+          <div class="ctrl"><div class="lbl">风门开度 <span class="v">第 0 档</span></div><div class="bar b-c"><i style="width:0%"></i></div><div style="font-size:8.5px;color:var(--faint);text-align:center;">0..10</div></div>
+          <div class="ctrl"><div class="lbl">滚筒转速 <span class="v">第 0 档</span></div><div class="bar b-d"><i style="width:0%"></i></div><div style="font-size:8.5px;color:var(--faint);text-align:center;">0..10</div></div>
+          <div class="blk" style="margin-top:4px;">备注</div>
+          <div class="blk amber" style="margin-top:4px;">仅记录本次操作</div>
+        </div>
+        <div class="c">
+          <div class="ph">实时烘焙曲线</div>
+          <div class="chart"><div class="grid"></div><div class="axis-l"></div><div class="axis-r"></div><span>温度与升温率 RoR  /  左轴：°C  |  右轴：°C/min</span></div>
+        </div>
+        <div class="r">
+          <div class="ph">曲线图例</div>
+          <div class="legend-chk">
+            <div class="chk"><span class="sw" style="background:#ffa03a"></span>豆温 BT</div>
+            <div class="chk"><span class="sw" style="background:#54cbe8"></span>环境温 ET</div>
+            <div class="chk"><span class="sw" style="background:#5ba8e0"></span>入风温 IT</div>
+            <div class="chk"><span class="sw" style="background:#c98bf0"></span>豆温 RoR</div>
+            <div class="chk"><span class="sw" style="background:#54cbe8"></span>环境温 RoR</div>
+            <div class="chk"><span class="sw" style="background:#5ba8e0"></span>入风温 RoR</div>
+            <div class="chk"><span class="sw" style="background:#f0a83f"></span>燃气（归一化）</div>
+            <div class="chk"><span class="sw" style="background:#3fb6c9"></span>风门档位</div>
+            <div class="chk"><span class="sw" style="background:#9d7bdc"></span>转速档位</div>
+            <div class="chk"><span class="sw" style="background:#8a8d93"></span>背景 BT</div>
+            <div class="chk"><span class="sw" style="background:#8a8d93"></span>背景 RoR</div>
+          </div>
+          <div class="ph" style="margin-top:6px;">目标与预测</div>
+          <div class="blk" style="font-size:9px;">目标转黄 150℃ / 一爆 195℃</div>
+          <div class="ph" style="margin-top:6px;">采样状态</div>
+          <div class="blk" style="font-size:9px;color:var(--warn);">等待采集数据</div>
+        </div>
+      </div>
+      <div class="note">↑ 布局结构基本符合，但：①事件按钮 2×4 网格嵌入图表卡下方（图中未显示，但代码确认）；②左栏 132px 固定偏窄，燃气/风门/转速三个 SpinBox+Slider 已经拥挤</div>
+    </div>
+    <div class="col exp">
+      <h3>设计预期<span class="tag">DOC §4.2 / §6.1</span></h3>
+      <div class="ws">
+        <div class="l">
+          <div class="ph">机台手动操作</div>
+          <div class="note" style="color:var(--warn);font-size:9.5px;">仅记录<br>不向设备发送控制指令</div>
+          <div class="ctrl"><div class="lbl">燃气压力 <span class="v">18.5 mbar</span></div><div class="bar"><i style="width:37%"></i></div><div style="font-size:8.5px;color:var(--faint);text-align:center;">0   25   50</div></div>
+          <div class="ctrl"><div class="lbl">风门开度 <span class="v">第 6 档</span></div><div class="bar b-c"><i style="width:60%"></i></div><div style="font-size:8.5px;color:var(--faint);text-align:center;">1 2 3 4 5 6 7 8 9 10</div></div>
+          <div class="ctrl"><div class="lbl">滚筒转速 <span class="v">第 5 档</span></div><div class="bar b-d"><i style="width:50%"></i></div><div style="font-size:8.5px;color:var(--faint);text-align:center;">1 2 3 4 5 6 7 8 9 10</div></div>
+        </div>
+        <div class="c">
+          <div class="ph">实时烘焙曲线 + 底部 8 列事件条</div>
+          <div class="chart" style="height:130px;"><div class="grid"></div><div class="axis-l"></div><div class="axis-r"></div><span>温度与升温率 RoR</span></div>
+          <div class="event-strip" style="margin-top:4px;">
+            <div class="e">CHARGE</div><div class="e">TP</div><div class="e">YELLOW</div>
+            <div class="e">FC_START</div><div class="e">FC_END</div><div class="e">SC_START</div>
+            <div class="e">SC_END</div><div class="e drop">DROP</div>
+          </div>
+        </div>
+        <div class="r">
+          <div class="ph">曲线图例（12 条可开关）</div>
+          <div class="legend-chk">
+            <div class="chk"><span class="sw" style="background:#ffa03a"></span>豆温 BT</div>
+            <div class="chk"><span class="sw" style="background:#54cbe8"></span>环境温 ET</div>
+            <div class="chk"><span class="sw" style="background:#5ba8e0"></span>入风温 IT</div>
+            <div class="chk"><span class="sw" style="background:#c98bf0"></span>豆温 RoR</div>
+            <div class="chk"><span class="sw" style="background:#54cbe8"></span>环境温 RoR</div>
+            <div class="chk"><span class="sw" style="background:#5ba8e0"></span>入风温 RoR</div>
+            <div class="chk"><span class="sw" style="background:#f0a83f"></span>燃气 mbar</div>
+            <div class="chk"><span class="sw" style="background:#3fb6c9"></span>风门档位</div>
+            <div class="chk"><span class="sw" style="background:#9d7bdc"></span>转速档位</div>
+            <div class="chk"><span class="sw" style="background:#8a8d93"></span>背景 BT</div>
+            <div class="chk"><span class="sw" style="background:#8a8d93"></span>背景 RoR</div>
+            <div class="chk"><span class="sw" style="background:#c98bf0"></span>RoR 预测</div>
+          </div>
+          <div class="ph" style="margin-top:6px;">目标与预测 ETA</div>
+          <div class="blk" style="font-size:9px;">转黄 150℃ → ETA 04:30<br>一爆 195℃ → ETA 07:15</div>
+          <div class="ph" style="margin-top:6px;">操作记录</div>
+          <div class="blk" style="font-size:9px;color:var(--dim);line-height:1.5;">02:10 燃气 20→18.5mbar<br>04:30 风门 第5→第6档</div>
+        </div>
+      </div>
+      <div class="note">↑ 事件条贴图表底部（Artisan 式），左栏只放滑块/读数，操作记录移到右栏，避免一处堆叠</div>
+    </div>
+  </div>
+</div>
+
+<!-- 7. 差异点清单 -->
+<div class="section">
+  <h2>⑦ 差异点清单（按严重度）<span class="meta">以代码与设计文档对照为准</span></h2>
+  <div class="diff-list">
+    <div class="diff-item sev-high">
+      <h4>① 顶部 UI 三层叠加 <span class="sev">HIGH · main_window.py L154–373</span></h4>
+      <p>同时存在 <code>QMenuBar</code>（文件/设备/视图/工具/帮助）+ <code>QToolBar</code>（开始监测/结束监测/...+ 3 个下拉）+ 新 <code>TopNav</code>（HB ROAST + 6 tab）。同一动作（如"连接设备"）在工具栏 act_connect 与导航 act_connect 中重复出现，违反单入口原则。</p>
+      <div class="refs">→ 建议保留 TopNav 为唯一顶部入口；QMenuBar 隐藏或转下拉；QToolBar 中"开始/结束监测"语义由 TopNav 旁的 ON/START/OFF 按钮承担</div>
+    </div>
+    <div class="diff-item sev-high">
+      <h4>② 事件按钮 2×4 网格，违背"8 列横向" <span class="sev">HIGH · event_panel.py L67 / L101–112</span></h4>
+      <p>代码默认 <code>grid.addWidget(..., index // 2, index % 2)</code> 即 2 列布局；虽提供 <code>set_button_columns</code> 但仅在短屏触发。Artisan 与设计文档均要求底部 8 列横条（一眼可见所有事件）。</p>
+      <div class="refs">→ 建议中栏底部添加独立 <code>event_strip</code> 容器，固定 8 列；事件卡片仅保留备注/列表</div>
+    </div>
+    <div class="diff-item sev-high">
+      <h4>③ 图表控制栏 12 个控件，过载 <span class="sev">HIGH · main_window.py L629–734</span></h4>
+      <p>「曲线显示」与右栏"曲线图例"功能重复；「线宽」与「单曲线线宽」职责重叠；「时间范围」spin + "应用范围"按钮挤占横向空间。设计文档要求图表内嵌工具栏 ≤ 5 项 + 目标摘要。</p>
+      <div class="refs">→ 建议移除"曲线显示"下拉（已由右栏图例 checkbox 承担）、合并线宽为单下拉、保留 RoR 窗口/自动跟随/轴/PDF</div>
+    </div>
+    <div class="diff-item sev-mid">
+      <h4>④ LCD 卡中文占位文字破坏等宽节奏 <span class="sev">MID · 截图 B 区 / main_window.py L504–511</span></h4>
+      <p>发展期 DTR 主标显示"等待一爆"5 个汉字；其余卡用"--.-"占位。设计文档要求数值位永远等宽数字或"-.--"。</p>
+      <div class="refs">→ 将"等待一爆/等待数据"等移至副标行；主标固定为数字或占位符</div>
+    </div>
+    <div class="diff-item sev-mid">
+      <h4>⑤ ON/START/OFF/RESET 嵌入 LCD 带最右，权重被稀释 <span class="sev">MID · main_window.py L515–536</span></h4>
+      <p>电源按钮组与 LCD 共用一行 8 卡布局，最右 4 列变成按钮，导致 LCD 被压成 4+4 不均。设计文档期望电源按钮组独占右上角 4 列（与读数带分离）。</p>
+      <div class="refs">→ 电源按钮组移出 LCD 带，单独一行右对齐（或在 TopNav 右侧）</div>
+    </div>
+    <div class="diff-item sev-mid">
+      <h4>⑥ 操作记录位置与目标预测混叠 <span class="sev">MID · main_window.py L453–481</span></h4>
+      <p>右栏右栏三层：曲线图例（4:2:0 拉伸）+ 目标与预测 + 采样状态。"操作记录"被设计文档要求单列，截图也未明显呈现手动操作记录卡。</p>
+      <div class="refs">→ 右栏改为：曲线图例 / 目标与预测 / 操作记录 / 采样状态 四卡，或按设计文档四层</div>
+    </div>
+    <div class="diff-item sev-low">
+      <h4>⑦ 入风温 CH3 在主标题写"环境温 ET" <span class="sev">LOW · main_window.py L504</span></h4>
+      <p>代码注释/命名中 <code>metric_et</code> 实际显示为"环境温 ET"，但 CH3 是 IT（入风温），命名混淆。设计文档与最终 LCD 卡都希望"进风温 CH3"。</p>
+      <div class="refs">→ 命名/标签统一为"进风温 CH3"（IT）与"排风温 CH4"（Exhaust）</div>
+    </div>
+    <div class="diff-item sev-low">
+      <h4>⑧ 里程碑 ETA 预测未在主屏突出 <span class="sev">LOW · target_panel.py L20–28</span></h4>
+      <p>目前放在右栏"目标与预测"中，标题"里程碑 ETA 预测"被小号字号淡化。设计文档希望转黄/一爆 ETA 在图表内（虚线 + 气泡）即时可见。</p>
+      <div class="refs">→ 在图表右侧加 ETA 气泡（实时倒计时），右栏仅保留目标温度设置</div>
+    </div>
+  </div>
+</div>
+
+<!-- 8. 功能完整性核对 -->
+<div class="section">
+  <h2>⑧ 功能完整性核对（v0.0.3 现状 vs 设计文档 §1.3）<span class="meta">以源码为依据</span></h2>
+  <table class="func-map">
+    <thead><tr><th style="width:24%">原功能模块</th><th>关键能力</th><th>当前落位</th><th style="width:10%">核对</th></tr></thead>
+    <tbody>
+      <tr><td>12 条曲线（IT/ET/BT/三路RoR/RoR预测/燃气/风门/转速/背景）</td><td>pyqtgraph 双轴 + 12 个 plot</td><td class="mono">curve_widget.py L56–96</td><td class="ok">✓</td></tr>
+      <tr><td>8 张 LCD 指标卡（ET/BT/RoR/时间/TP/DTR/进风/排风）</td><td>8 个 metricCard</td><td class="mono">main_window.py L504–511</td><td class="ok">✓</td></tr>
+      <tr><td>8 类事件按钮（CHARGE/TP/YELLOW/FC_START/END/SC_START/END/DROP）</td><td>EventPanel + 三态</td><td class="mono">event_panel.py L6–15</td><td class="ok">✓</td></tr>
+      <tr><td>事件三态语义：待录/已录/DROP 锁定</td><td>QPushButton eventState 属性</td><td class="mono">main_window.py L192–194</td><td class="ok">✓</td></tr>
+      <tr><td>燃气压力 mbar（0–50，步进 0.5）</td><td>QDoubleSpinBox + QSlider，仅记录</td><td class="mono">action_panel.py L30–52</td><td class="ok">✓</td></tr>
+      <tr><td>风门开度 1–10 档，独立</td><td>QDoubleSpinBox (0.0–10.0) + QSlider</td><td class="mono">action_panel.py L54–77</td><td class="ok">✓</td></tr>
+      <tr><td>滚筒转速 1–10 档，独立</td><td>QDoubleSpinBox (0.0–10.0) + QSlider</td><td class="mono">action_panel.py L79–102</td><td class="ok">✓</td></tr>
+      <tr><td>软件仅记录，不发控制指令</td><td>accessibleName/Description 标注</td><td class="mono">action_panel.py L11–13, 21–27</td><td class="ok">✓</td></tr>
+      <tr><td>里程碑 ETA（转黄/一爆预测）</td><td>TargetPanel 两个 spin + ETA label</td><td class="mono">target_panel.py L40–62</td><td class="ok">✓</td></tr>
+      <tr><td>采集连接（HB Model S / TC4 / 旧三路）</td><td>act_connect 触发 _connect_device</td><td class="mono">main_window.py L315 / device/*</td><td class="ok">✓</td></tr>
+      <tr><td>断线自动重连（5 次/1.2s）</td><td>_reconnect_timer</td><td class="mono">main_window.py L110–115</td><td class="ok">✓</td></tr>
+      <tr><td>曲线对比（多批次叠加）</td><td>act_compare → CompareWindow</td><td class="mono">ui/compare_window.py</td><td class="ok">✓</td></tr>
+      <tr><td>回放（双图/倍速/滑杆）</td><td>ReplayWindow</td><td class="mono">ui/replay_window.py</td><td class="ok">✓</td></tr>
+      <tr><td>坐标轴设置 X/左Y/右Y</td><td>AxisSettingsDialog</td><td class="mono">ui/axis_settings_dialog.py</td><td class="ok">✓</td></tr>
+      <tr><td>显示设置（线宽/曲线可见/主题）</td><td>DisplaySettingsDialog + chart_control_bar</td><td class="mono">ui/display_settings_dialog.py</td><td class="ok">✓</td></tr>
+      <tr><td>通道映射 CH1–CH4</td><td>act_channels → ChannelMapper</td><td class="mono">device/channel_mapping.py</td><td class="ok">✓</td></tr>
+      <tr><td>调试日志与诊断包</td><td>SessionDebugLogger</td><td class="mono">debug/session_debug_logger.py</td><td class="ok">✓</td></tr>
+      <tr><td>SQLite 批次存储</td><td>RoastDatabase</td><td class="mono">database/database.py</td><td class="ok">✓</td></tr>
+      <tr><td>CSV/JSON/txt/PDF 四类导出</td><td>export/* + chart_pdf</td><td class="mono">export/{csv,json,report,chart_pdf}.py</td><td class="ok">✓</td></tr>
+      <tr><td>深/浅双主题</td><td>THEME_TOKENS + _apply_theme</td><td class="mono">main_window.py L44–206</td><td class="ok">✓</td></tr>
+      <tr><td>采样质量门（毛刺/断点）</td><td>SampleQualityGate</td><td class="mono">roast/sample_quality.py</td><td class="ok">✓</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><b>结论：</b>v0.0.3 已<b>全量保留</b>原 0.0.0.1 的功能模块（21/21），包括纯手动/仅记录语义、三档滑块、事件三态、12 曲线、双主题等核心要素。<b>问题集中在 UI 呈现层的层次、布局密度和视觉权重上</b>，不涉及功能遗漏。</div>
+</div>
+
+<!-- 9. 修复建议优先级 -->
+<div class="section">
+  <h2>⑨ 修复建议优先级（待用户确认）<span class="meta">本预览仅作为分析输出，<b>未改动任何代码</b></span></h2>
+  <table class="func-map">
+    <thead><tr><th style="width:6%">P</th><th style="width:30%">修改项</th><th>影响范围</th><th style="width:14%">预估代码量</th></tr></thead>
+    <tbody>
+      <tr><td class="bad">P0</td><td>移除/隐藏 QMenuBar + QToolBar，仅保留 TopNav 为顶部唯一入口</td><td>main_window.py L154–373 删 ~80 行</td><td class="mono">~30 行</td></tr>
+      <tr><td class="bad">P0</td><td>事件条改为 8 列横向，固定在图表卡底部；事件面板仅保留备注 + 列表</td><td>event_panel.py + main_window 重组</td><td class="mono">~60 行</td></tr>
+      <tr><td class="bad">P0</td><td>图表控制栏精简：去除"曲线显示"下拉（与图例重复）、合并"单曲线线宽"到"线宽"下拉</td><td>main_window.py L683–728 删 ~30 行</td><td class="mono">~20 行</td></tr>
+      <tr><td class="warn">P1</td><td>ON/START/OFF/RESET 移出 LCD 带，单独一行右对齐（或 TopNav 右侧）</td><td>main_window.py L515–536 重组</td><td class="mono">~25 行</td></tr>
+      <tr><td class="warn">P1</td><td>LCD 卡"等待一爆"等中文占位移到副标；主标固定为数字/--.--</td><td>main_window.py 改 _metric_card 文案</td><td class="mono">~15 行</td></tr>
+      <tr><td class="warn">P1</td><td>右栏增加"操作记录"卡；移除/弱化"采样状态"独立卡</td><td>main_window.py L453–481 调整顺序</td><td class="mono">~20 行</td></tr>
+      <tr><td>2</td><td>"环境温 ET"统一改"进风温 IT（CH3）"以符合 HB 协议通道语义</td><td>main_window.py 命名 + 标签</td><td class="mono">~10 行</td></tr>
+      <tr><td>2</td><td>图表内添加 ETA 预测虚线 + 倒计时气泡</td><td>curve_widget.py + main_window 联动</td><td class="mono">~40 行</td></tr>
+    </tbody>
+  </table>
+  <div class="callout" style="border-left-color:var(--info);">
+    <b>约束重申：</b>本预览仅用于展示当前 UI 状态与设计文档的差异，<b>未修改任何源文件、资源或配置</b>。
+    上述修改建议以条目形式呈现，<b>等待你确认后再考虑后续实际操作</b>。
+  </div>
+</div>
+
+</body>
+</html>

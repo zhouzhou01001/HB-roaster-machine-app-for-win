@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>燃气设备控制界面 · 统一方案预览（深/浅双主题）</title>
+<style>
+/* ========== 主题变量 ========== */
+.theme-dark{
+  --bg:#232323; --panel:#333; --panel2:#3f3f3f; --line:#525252;
+  --txt:#ececec; --dim:#9a9a9a;
+  --lcd-bg:#141414; --lcd-on:#ffb340;
+  --brand:#3fb984; --brand-soft:#28453a; --brand-deep:#7fe0b5;
+  --gas:#f2994a; --damp:#4ec9e6; --spd:#c678dd;
+  --warn:#e6a23c; --danger:#e05d5d; --ok:#7ec97e;
+  --shadow:0 2px 8px rgba(0,0,0,.35);
+}
+.theme-light{
+  --bg:#eef1f0; --panel:#ffffff; --panel2:#f4f7f6; --line:#dde5e2;
+  --txt:#253331; --dim:#7b8a87;
+  --lcd-bg:#1a1a1a; --lcd-on:#ffb340;
+  --brand:#00a67d; --brand-soft:#e0f5ef; --brand-deep:#007d5f;
+  --gas:#e07b2a; --damp:#0e8fc4; --spd:#8b5cf6;
+  --warn:#d97706; --danger:#dc4444; --ok:#12a06d;
+  --shadow:0 2px 10px rgba(30,60,50,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI","Microsoft YaHei",sans-serif;}
+body{background:#191919;color:#ddd;font-size:13.5px;}
+.page{padding:14px;max-width:1280px;margin:0 auto;}
+h2.t{font-size:17px;margin:6px 0 10px;color:#e8b25f;}
+.desc{color:#999;font-size:12.5px;line-height:1.75;margin-bottom:12px;max-width:1050px;}
+.callout{border-left:3px solid #e8b25f;background:#2a2a2a;padding:9px 13px;border-radius:0 8px 8px 0;margin:10px 0;font-size:12.5px;line-height:1.8;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{border:1px solid #444;padding:6px 8px;text-align:left;vertical-align:top;}
+th{color:#e8b25f;background:#2d2d2d;}
+.badge{display:inline-block;font-size:10.5px;border-radius:20px;padding:2px 9px;margin-left:6px;font-weight:500;white-space:nowrap;}
+.badge.a{background:#3d4a5c;color:#9ec5e8;} .badge.b{background:#2f4a3d;color:#8fd8b4;} .badge.src{background:#4a5b3a;color:#bfe08a;}
+.note{font-size:11px;color:var(--dim);line-height:1.6;}
+
+/* ========== 面板外壳（主题容器） ========== */
+.themed{background:var(--bg);color:var(--txt);border-radius:14px;padding:12px;border:1px solid var(--line);box-shadow:var(--shadow);}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;box-shadow:var(--shadow);}
+.card h3{font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.tag{font-size:10px;border:1px solid var(--line);border-radius:20px;padding:1px 8px;color:var(--dim);font-weight:400;}
+
+/* ========== 顶部：模式选择 ========== */
+.modebar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+.modebar .lab{font-size:12px;color:var(--dim);font-weight:600;}
+.mode{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:var(--panel);color:var(--txt);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:12.5px;font-weight:600;transition:.15s;}
+.mode small{display:block;font-size:9.5px;color:var(--dim);font-weight:400;}
+.mode:hover{border-color:var(--brand);}
+.mode.on{background:var(--brand);border-color:var(--brand);color:#fff;}
+.mode.on small{color:rgba(255,255,255,.85);}
+.mode.warn-on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-deep);}
+
+/* ========== 主区布局 ========== */
+.workspace{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;}
+.col-ctrl{width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;}
+.col-mid{flex:1;min-width:340px;display:flex;flex-direction:column;gap:10px;}
+
+/* ========== 控件1：燃气压力（mbar） ========== */
+.gas-lcd{background:var(--lcd-bg);border:1px solid #000;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.gas-lcd .v{font-family:Consolas,monospace;font-size:30px;font-weight:700;color:var(--lcd-on);line-height:1;}
+.gas-lcd .u{font-size:13px;color:#8a6d3a;font-weight:600;margin-left:5px;}
+.gas-lcd .side{text-align:right;font-size:10.5px;color:#777;line-height:1.6;font-family:Consolas,monospace;}
+.gas-lcd .side b{color:#9ac1e8;font-size:12px;}
+.gas-track{position:relative;height:26px;margin:6px 0 4px;}
+.gas-track .rail{position:absolute;top:11px;left:0;right:0;height:4px;border-radius:2px;background:var(--panel2);border:1px solid var(--line);}
+.gas-track .warnzone{position:absolute;top:6px;height:14px;background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--warn)22,var(--warn) 44px);border-radius:3px;opacity:.35;}
+.gas-track .fill{position:absolute;top:11px;height:4px;border-radius:2px;background:var(--gas);left:0;}
+.gas-track .knob{position:absolute;top:2px;width:22px;height:22px;border-radius:50%;background:var(--gas);border:3px solid var(--panel);box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:grab;transform:translateX(-50%);}
+.gas-track input[type=range]{position:absolute;inset:0;width:100%;opacity:0;cursor:ew-resize;margin:0;}
+.gas-scale{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-family:Consolas,monospace;}
+.stepper{display:flex;gap:6px;margin-top:8px;}
+.stepper button{flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:8px;padding:7px 0;font-size:15px;font-weight:700;cursor:pointer;}
+.stepper button:hover{border-color:var(--gas);color:var(--gas);}
+.stepper button:disabled{opacity:.35;cursor:not-allowed;}
+
+/* ========== 控件2/3：档位（0-10） ========== */
+.gear{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.gear .num{width:64px;height:64px;border-radius:12px;background:var(--lcd-bg);border:1px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.gear .num b{font-family:Consolas,monospace;font-size:28px;line-height:1;}
+.gear .num small{font-size:9px;color:#777;letter-spacing:1px;}
+.gear.damp .num b{color:var(--damp);} .gear.spd .num b{color:var(--spd);}
+.gear .segs{flex:1;display:flex;gap:4px;height:40px;align-items:flex-end;cursor:pointer;}
+.gear .segs span{flex:1;border-radius:4px 4px 2px 2px;background:var(--panel2);border:1px solid var(--line);position:relative;height:100%;transition:.12s;}
+.gear .segs span.on{background:var(--c);border-color:var(--c);box-shadow:0 0 6px var(--c);}
+.gear .segs span i{position:absolute;bottom:-16px;left:0;right:0;text-align:center;font-size:9px;color:var(--dim);font-style:normal;font-family:Consolas,monospace;}
+.gear-row2{display:flex;justify-content:space-between;align-items:center;}
+.gear-name{font-size:12px;font-weight:600;}
+.gear-name small{color:var(--dim);font-weight:400;}
+.seg-scale{display:flex;gap:4px;margin-top:20px;}
+.seg-scale span{flex:1;text-align:center;font-size:9.5px;color:var(--dim);font-family:Consolas,monospace;}
+
+/* ========== 状态徽标/接管 ========== */
+.auto-note{display:none;margin-top:8px;border-radius:8px;background:var(--brand-soft);color:var(--brand-deep);padding:7px 10px;font-size:11.5px;line-height:1.5;}
+.panel-auto .auto-note{display:block;}
+.panel-auto .gas-track .knob{background:var(--brand);}
+.panel-auto .gear .num b{color:var(--brand) !important;}
+.lock-note{display:none;margin-top:8px;border-radius:8px;background:rgba(224,93,93,.14);color:var(--danger);padding:7px 10px;font-size:11.5px;}
+.panel-lock .lock-note{display:block;}
+
+/* ========== 火焰状态 ========== */
+.flame{display:flex;align-items:center;gap:10px;}
+.flame .ic{width:34px;height:34px;border-radius:50%;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;font-size:17px;}
+.flame.on .ic{background:var(--gas);}
+.flame b{font-size:12.5px;} .flame small{display:block;color:var(--dim);font-size:10.5px;}
+.kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line);font-size:12px;}
+.kv:last-child{border-bottom:none;} .kv b{font-family:Consolas,monospace;}
+
+/* ========== 曲线条带 ========== */
+canvas{display:block;width:100%;}
+.lg{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--dim);margin-right:12px;}
+.lg i{width:14px;height:4px;border-radius:2px;display:inline-block;}
+
+/* ========== 状态栏 ========== */
+.statusbar{display:flex;gap:14px;font-size:11px;color:var(--dim);padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;flex-wrap:wrap;margin-top:10px;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:4px;}
+.dot.bad{background:var(--danger);}
+
+/* ========== 并排对照区 ========== */
+.side-by-side{display:flex;gap:14px;flex-wrap:wrap;}
+.side-by-side .half{flex:1;min-width:430px;}
+.side-label{text-align:center;font-size:12px;margin:8px 0;color:#999;}
+.side-by-side .themed{transform-origin:top center;}
+.spec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px;}
+.state-chip{display:inline-block;font-size:10px;border-radius:6px;padding:2px 8px;margin-bottom:8px;}
+.state-chip.n{background:#2f4a3d;color:#8fd8b4;} .state-chip.a{background:#3d4a5c;color:#9ec5e8;} .state-chip.l{background:#5c2f2f;color:#ff9d9d;} .state-chip.d{background:#4a4a4a;color:#bbb;}
+kbd{background:#2d2d2d;border:1px solid #555;border-radius:4px;padding:0 6px;font-size:10.5px;font-family:Consolas,monospace;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ═══ 说明与合并映射 ═══ -->
+  <h2 class="t">燃气设备控制界面 · 统一方案（方案一 × 方案二 合并版）</h2>
+  <div class="desc">
+    本界面将前两版方案的机台控制部分合并为单套设计：以<b>方案二（Cropster 风格）的卡片化布局、大圆角与留白</b>为骨架，
+    吸收<b>方案一（Artisan 风格）的 LCD 数字读数、滑杆+档位指示与高密度状态反馈</b>。
+    控制规格统一为：<b>燃气压力以 mbar 显示与调节；风门开度、电机转速均采用 0–10 档位</b>（与原程序 0–10 归一化操作记录语义一致）。
+    支持四种运行模式切换；深色 / 浅色两套主题布局完全一致、仅配色不同。
+  </div>
+  <div class="callout">
+    <b>合并原则落地：</b>① 保留方案一的 LCD 读数、滑杆轨道+警示区、快捷键与状态栏 → 升级为卡片内嵌；
+    ② 保留方案二的模式分段器、卡片分区、折叠说明与品牌绿点缀 → 作为整体框架；
+    ③ 去除重复：两案各自的滑杆/按钮组合并为「LCD + 轨道/档位条 + 步进按钮」单一控件模式；
+    ④ 新增燃气设备安全要素：火焰状态、压力警示区（&gt;35 mbar）、紧急停火、模式接管提示。
+  </div>
+  <table style="margin-bottom:14px;">
+    <tr><th style="width:22%">控件/区域</th><th style="width:27%">取自方案一（Artisan）</th><th style="width:27%">取自方案二（Cropster）</th><th>合并后形态</th></tr>
+    <tr><td>燃气压力</td><td>LCD 数字读数、Power 滑杆</td><td>机台读数卡</td><td>mbar LCD + 压力轨道（0–50 mbar，>35 警示区）+ ±步进</td></tr>
+    <tr><td>风门开度</td><td>Fan 滑杆 + 曲线标注</td><td>读数卡精简模式</td><td>0–10 档位条（10 段可点）+ 大数字 + ±档步进</td></tr>
+    <tr><td>电机转速</td><td>滑杆</td><td>读数卡</td><td>0–10 档位条（同上，紫色区分）</td></tr>
+    <tr><td>模式选择</td><td>电源按钮组生命周期</td><td>三阶段工作流</td><td>四模式分段器：待机 / 预热 / 手动 / 程序自动</td></tr>
+    <tr><td>操作记录</td><td>操作记录面板</td><td>点击图表备注</td><td>控制卡内嵌最近操作 + 曲线条带标注</td></tr>
+    <tr><td>主题</td><td>深色工作站</td><td>浅色卡片</td><td>双主题统一布局，仅配色差异（下方并排对照）</td></tr>
+  </table>
+
+  <!-- ═══ 主交互界面 ═══ -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+    <h2 class="t" style="margin:0;">完整界面预览（可交互）</h2>
+    <div>
+      <button class="mode" id="themeBtn" onclick="switchTheme()" style="border-radius:10px;">◑ 切换 深色 / 浅色</button>
+    </div>
+  </div>
+  <div class="themed theme-dark" id="mainPanel"></div>
+
+  <div class="note" style="margin:8px 0 4px;color:#888;">
+    交互说明：点模式分段器切换运行模式（程序自动模式下手/风/转速由曲线接管，控件显示绿色「自动」态；待机模式全部锁定）；
+    燃气轨道可拖动或点 ±（0.5 mbar/步，范围 0–50，>35 mbar 为警示区）；档位条点击任意段直达，或 ± 逐档（0–10 档）。
+    快捷键（正式版）：<kbd>↑↓</kbd> 燃气 <kbd>←→</kbd> 风门 <kbd>PgUp/PgDn</kbd> 转速 <kbd>Space</kbd> 模式循环 <kbd>Esc</kbd> 紧急停火确认。
+  </div>
+
+  <!-- ═══ 双主题并排对照 ═══ -->
+  <h2 class="t" style="margin-top:18px;">深色 / 浅色主题并排对照<span class="badge a">布局一致 · 仅配色不同</span></h2>
+  <div class="desc">同一份控件与布局，分别套用两套主题变量渲染，供最终配色决策。</div>
+  <div class="side-by-side">
+    <div class="half">
+      <div class="side-label">深色主题（Dark）— 烘焙车间强光环境 / 夜班</div>
+      <div id="demoDark"></div>
+    </div>
+    <div class="half">
+      <div class="side-label">浅色主题（Light）— 办公室复盘 / 日间</div>
+      <div id="demoLight"></div>
+    </div>
+  </div>
+
+  <!-- ═══ 控件最终样式规范 ═══ -->
+  <h2 class="t" style="margin-top:18px;">三种调节控件 · 最终样式与状态规范</h2>
+  <div class="spec-grid" id="specGrid"></div>
+
+</div>
+
+<script>
+/* ═════════ 面板模板（主界面与对照区共用） ═════════ */
+function panelHTML(mode){
+  mode=mode||'manual';
+  const gearSegs=(cls,val)=>{
+    let s='';for(let i=1;i<=10;i++)s+=`<span class="${i<=val?'on':''}" data-v="${i}" style="--c:var(--${cls})"></span>`;
+    return s;
+  };
+  return `
+  <!-- 模式选择 -->
+  <div class="modebar">
+    <span class="lab">运行模式</span>
+    <button class="mode ${mode==='standby'?'on':''}" data-m="standby">⏻ 待机<small>设备锁定 · 安全态</small></button>
+    <button class="mode ${mode==='preheat'?'warn-on':''} ${mode==='preheat'?'on':''}" data-m="preheat">🔥 预热<small>燃气自动保持 8.0 mbar</small></button>
+    <button class="mode ${mode==='manual'?'on':''}" data-m="manual">✋ 手动<small>全程人工调节</small></button>
+    <button class="mode ${mode==='auto'?'on':''}" data-m="auto">📈 程序自动<small>跟随配方曲线接管</small></button>
+    <span style="flex:1"></span>
+    <button class="mode" style="border-color:var(--danger);color:var(--danger);" onclick="alert('紧急停火：燃气阀关闭 → 风门全开(10档) → 转速维持散热（需二次确认）')">⛔ 紧急停火</button>
+  </div>
+
+  <div class="workspace ${mode==='auto'?'panel-auto':''} ${mode==='standby'?'panel-lock':''}">
+    <!-- 左：参数控制 -->
+    <div class="col-ctrl">
+      <!-- 燃气压力 -->
+      <div class="card">
+        <h3>燃气压力 <span class="tag">Gas · mbar</span></h3>
+        <div class="gas-lcd">
+          <div><span class="v" id="g-v">18.5</span><span class="u">mbar</span></div>
+          <div class="side">设定 <b id="g-sp">18.5</b><br>警戒 35.0<br>量程 0–50</div>
+        </div>
+        <div class="gas-track">
+          <div class="rail"></div>
+          <div class="warnzone" style="left:70%;right:0;"></div>
+          <div class="fill" id="g-fill" style="width:37%"></div>
+          <div class="knob" id="g-knob" style="left:37%"></div>
+          <input type="range" min="0" max="50" step="0.5" value="18.5" id="g-range">
+        </div>
+        <div class="gas-scale"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50 mbar</span></div>
+        <div class="stepper">
+          <button data-gas="-1">− 0.5 mbar</button>
+          <button data-gas="1">＋ 0.5 mbar</button>
+        </div>
+        <div class="auto-note">📈 程序自动：压力由配方曲线接管（当前 18.5 → 目标 22.0 mbar），手动输入已挂起</div>
+        <div class="lock-note">⏻ 待机锁定：燃气阀关闭（0.0 mbar），解除待机后方可调节</div>
+      </div>
+
+      <!-- 风门开度 -->
+      <div class="card">
+        <h3>风门开度 <span class="tag">Damper · 0–10 档</span></h3>
+        <div class="gear damp">
+          <div class="num"><b>6</b><small>档 /10</small></div>
+          <div class="segs" data-ctrl="damp">${gearSegs('damp',6)}</div>
+        </div>
+        <div class="gear-row2">
+          <span class="gear-name">风门 DAMPER <small>· 开度百分比 ≈ 档位×10%</small></span>
+          <div class="stepper" style="margin:0;flex:0 0 130px;">
+            <button data-damp="-1">− 1 档</button><button data-damp="1">＋ 1 档</button>
+          </div>
+        </div>
+        <div class="auto-note">📈 程序自动：风门由曲线接管（当前 6 档 → 目标 7 档）</div>
+        <div class="lock-note">⏻ 待机锁定：风门保持 10 档（通风散热位）</div>
+      </div>
+
+      <!-- 电机转速 -->
+      <div class="card">
+        <h3>电机转速 <span class="tag">Drum Speed · 0–10 档</span></h3>
+        <div class="gear spd">
+          <div class="num"><b>5</b><small>档 /10</small></div>
+          <div class="segs" data-ctrl="spd">${gearSegs('spd',5)}</div>
+        </div>
+        <div class="gear-row2">
+          <span class="gear-name">滚筒转速 DRUM <small>· 约 45 rpm @5 档</small></span>
+          <div class="stepper" style="margin:0;flex:0 0 130px;">
+            <button data-spd="-1">− 1 档</button><button data-spd="1">＋ 1 档</button>
+          </div>
+        </div>
+        <div class="auto-note">📈 程序自动：转速由曲线接管（保持 5 档）</div>
+        <div class="lock-note">⏻ 待机锁定：电机停转（0 档）</div>
+      </div>
+    </div>
+
+    <!-- 右：状态与曲线 -->
+    <div class="col-mid">
+      <div class="card">
+        <h3>设备状态 <span class="tag">燃气机台 · HB Model S</span></h3>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+          <div class="flame on"><div class="ic">🔥</div><div><b>燃烧中</b><small>火焰检测正常 · 电磁阀开</small></div></div>
+          <div class="flame"><div class="ic">🛡</div><div><b>联锁正常</b><small>超温/熄火保护待命</small></div></div>
+          <div class="flame"><div class="ic">📡</div><div><b>通信正常</b><small>COM3 · 1Hz · 自动重连</small></div></div>
+        </div>
+        <div style="margin-top:8px;">
+          <div class="kv"><span>燃气压力（实测 / 设定）</span><b><span style="color:var(--gas)">18.5</span> / 18.5 mbar</b></div>
+          <div class="kv"><span>风门开度</span><b><span style="color:var(--damp)">6 档</span>（60%）</b></div>
+          <div class="kv"><span>电机转速</span><b><span style="color:var(--spd)">5 档</span>（≈45 rpm）</b></div>
+          <div class="kv"><span>累计运行 / 本次燃烧</span><b>1,284 h / 07:42</b></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>控制曲线条带 <span class="tag">燃气/风门/转速 归一化 0–10（原 CurveWidget 归一化曲线）</span></h3>
+        <canvas class="ctrlCanvas" height="150"></canvas>
+        <div style="padding:4px 4px 0;">
+          <span class="lg"><i style="background:var(--gas)"></i>燃气</span>
+          <span class="lg"><i style="background:var(--damp)"></i>风门</span>
+          <span class="lg"><i style="background:var(--spd)"></i>转速</span>
+          <span class="lg"><i style="background:var(--brand);height:2px;border-top:2px dashed var(--brand);background:none"></i>配方目标（自动模式）</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>最近操作 <span class="tag">自动写入批次操作记录（原 ActionPanel）</span></h3>
+        <div style="font-size:11.5px;color:var(--dim);line-height:2;">
+          <div>07:42:10 燃气 20.0 → 18.5 mbar（手动 −0.5×3）</div>
+          <div>07:36:02 风门 5 → 6 档（手动 +1）</div>
+          <div>07:30:00 模式切换：预热 → 手动</div>
+          <div>07:28:44 预热完成：186℃ 保持 3 分钟</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="statusbar">
+    <span><span class="dot"></span>COM3 · HB 燃气协议 · 已连接</span>
+    <span>模式：<b style="color:var(--brand)">手动</b></span>
+    <span>火焰：燃烧 · 电磁阀：开</span>
+    <span>压力采样 1Hz · 偏差 +0.0 mbar</span>
+    <span>断线重连：启用 · 调试日志：帮助 → 诊断</span>
+  </div>`;
+}
+
+/* ═════════ 曲线条带绘制 ═════════ */
+function drawStrip(cv){
+  const ctx=cv.getContext('2d');
+  const W=cv.width=cv.clientWidth*2,H=cv.height=cv.getAttribute('height')*2;
+  cv.style.height=cv.getAttribute('height')+'px';
+  const t=getComputedStyle(cv.closest('.themed'));
+  const bg=t.getPropertyValue('--panel'),grid=t.getPropertyValue('--line'),txt=t.getPropertyValue('--dim');
+  const gas=t.getPropertyValue('--gas').trim(),damp=t.getPropertyValue('--damp').trim(),spd=t.getPropertyValue('--spd').trim(),br=t.getPropertyValue('--brand').trim();
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const L=52,R=W-20,T=14,B=H-26,tMax=12;
+  ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.fillStyle=txt;ctx.font='19px Consolas';
+  for(let g=0;g<=10;g+=2){const y=B-(g/10)*(B-T);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(R,y);ctx.stroke();ctx.fillText(g,L-30,y+7);}
+  for(let m=0;m<=tMax;m+=3){const x=L+m/tMax*(R-L);ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,B);ctx.stroke();ctx.fillText(m+'m',x-8,H-8);}
+  // 配方目标（虚线，燃气）
+  ctx.strokeStyle=br;ctx.setLineDash([8,8]);ctx.lineWidth=3;ctx.beginPath();
+  [[0,4],[2,5],[4,7],[6,7.4],[9,6.2],[12,4.4]].forEach((p,i)=>{const x=L+p[0]/tMax*(R-L),y=B-p[1]/10*(B-T);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+  ctx.stroke();ctx.setLineDash([]);
+  // 三条阶跃曲线
+  const step=(pts,color,w)=>{
+    ctx.strokeStyle=color;ctx.lineWidth=w;ctx.lineJoin='round';ctx.beginPath();
+    pts.forEach((p,i)=>{const x=L+p[0]/tMax*(R-L),y=B-p[1]/10*(B-T);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    ctx.stroke();
+  };
+  step([[0,4],[2.2,4],[2.2,4.4],[4.1,4.4],[4.1,3.7],[7.7,3.7]],gas,4.5);
+  step([[0,5],[5.6,5],[5.6,6],[12,6]],damp,4.5);
+  step([[0,5],[12,5]],spd,4.5);
+  // 当前点
+  const cx=L+7.7/12*(R-L);
+  [ [3.7,gas],[6,damp],[5,spd] ].forEach(p=>{
+    const y=B-p[0]/10*(B-T);
+    ctx.fillStyle=p[1];ctx.beginPath();ctx.arc(cx,y,7,0,7);ctx.fill();
+    ctx.strokeStyle=bg;ctx.lineWidth=3;ctx.stroke();
+  });
+  ctx.fillStyle=txt;ctx.font='19px "Segoe UI"';ctx.fillText('当前 07:42',cx+12,T+18);
+}
+
+/* ═════════ 主面板交互 ═════════ */
+const main=document.getElementById('mainPanel');
+main.innerHTML=panelHTML('manual');
+drawStrip(main.querySelector('canvas'));
+
+main.addEventListener('click',e=>{
+  const modeBtn=e.target.closest('.mode[data-m]');
+  if(modeBtn){
+    main.innerHTML=panelHTML(modeBtn.dataset.m);
+    drawStrip(main.querySelector('canvas'));
+    applyModeLock(modeBtn.dataset.m);
+    return;
+  }
+  const gs=e.target.closest('[data-gas]');
+  if(gs){gasSet(+main.querySelector('#g-range').value + (+gs.dataset.gas)*0.5);return;}
+  const gd=e.target.closest('[data-damp]');
+  if(gd){gearSet('damp',gd.closest('.card'),(+gd.dataset.damp));return;}
+  const gsp=e.target.closest('[data-spd]');
+  if(gsp){gearSet('spd',gsp.closest('.card'),(+gsp.dataset.spd));return;}
+  const seg=e.target.closest('.segs span');
+  if(seg){
+    const ctrl=seg.parentElement.dataset.ctrl;
+    gearSet(ctrl,seg.closest('.card'),+seg.dataset.v-(curVal(seg.closest('.card'))));
+  }
+});
+main.addEventListener('input',e=>{
+  if(e.target.id==='g-range')gasSet(+e.target.value,true);
+});
+function curVal(card){return +card.querySelector('.gear .num b').textContent;}
+function gasSet(v,fromRange){
+  v=Math.max(0,Math.min(50,Math.round(v*2)/2));
+  const r=main.querySelector('#g-range');r.value=v;
+  main.querySelector('#g-v').textContent=v.toFixed(1);
+  main.querySelector('#g-sp').textContent=v.toFixed(1);
+  main.querySelector('#g-fill').style.width=(v/50*100)+'%';
+  main.querySelector('#g-knob').style.left=(v/50*100)+'%';
+  if(v>35)main.querySelector('#g-v').style.color='var(--danger)';
+  else main.querySelector('#g-v').style.color='';
+  if(!fromRange)log(`燃气 → ${v.toFixed(1)} mbar`);
+}
+function gearSet(ctrl,card,delta){
+  const cur=curVal(card);
+  let v=Math.max(0,Math.min(10,cur+delta));
+  card.querySelector('.gear .num b').textContent=v;
+  card.querySelectorAll('.segs span').forEach(s=>s.classList.toggle('on',+s.dataset.v<=v));
+  log(`${ctrl==='damp'?'风门':'转速'} → ${v} 档`);
+}
+let logN=0;
+function log(msg){
+  const box=main.querySelectorAll('.card');
+  const rec=box[box.length-1].querySelector('div[style]');
+  if(rec&&logN<3){const d=document.createElement('div');d.textContent='刚刚 '+msg;rec.prepend(d);logN++;}
+}
+function applyModeLock(m){
+  main.querySelectorAll('.stepper button,[data-gas],[data-damp],[data-spd],#g-range,.segs').forEach(el=>el.disabled=(m==='standby'));
+}
+function switchTheme(){
+  const el=document.getElementById('mainPanel');
+  el.classList.toggle('theme-dark');el.classList.toggle('theme-light');
+  drawStrip(el.querySelector('canvas'));
+}
+
+/* ═════════ 并排对照（静态渲染） ═════════ */
+document.getElementById('demoDark').innerHTML=`<div class="themed theme-dark">${panelHTML('manual')}</div>`;
+document.getElementById('demoLight').innerHTML=`<div class="themed theme-light">${panelHTML('manual')}</div>`;
+document.querySelectorAll('#demoDark .themed, #demoLight .themed').forEach(t=>{
+  t.style.transform='scale(.88)';t.style.width='113.6%';
+  drawStrip(t.querySelector('canvas'));
+});
+
+/* ═════════ 控件样式规范 ═════════ */
+const gearSegs=(cls,val)=>{let s='';for(let i=1;i<=10;i++)s+=`<span class="${i<=val?'on':''}" style="--c:var(--${cls})"></span>`;return s;};
+document.getElementById('specGrid').innerHTML=`
+<div class="themed theme-dark">
+  <div style="margin-bottom:6px;"><span class="state-chip n">① 燃气压力 · 常规态</span></div>
+  <div class="card">
+    <div class="gas-lcd"><div><span class="v">18.5</span><span class="u">mbar</span></div><div class="side">设定 <b>18.5</b><br>警戒 35.0</div></div>
+    <div class="gas-track"><div class="rail"></div><div class="warnzone" style="left:70%;right:0"></div><div class="fill" style="width:37%"></div><div class="knob" style="left:37%"></div></div>
+    <div class="gas-scale"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50 mbar</span></div>
+    <div class="note">步进 ±0.5 mbar；>35 mbar 读数变红 + 轨道斜纹警示区；等宽 LCD 字体，一位小数。</div>
+  </div>
+  <div style="margin:10px 0 6px;"><span class="state-chip d">② 燃气 · 超压警示态</span></div>
+  <div class="card">
+    <div class="gas-lcd"><div><span class="v" style="color:var(--danger)">38.0</span><span class="u">mbar</span></div><div class="side" style="color:var(--danger)">⚠ 超压警示</div></div>
+    <div class="gas-track"><div class="rail"></div><div class="warnzone" style="left:70%;right:0"></div><div class="fill" style="width:76%;background:var(--danger)"></div><div class="knob" style="left:76%;background:var(--danger)"></div></div>
+    <div class="note">读数与填充条转警示红，触发联锁提示（可配置阈值）。</div>
+  </div>
+</div>
+<div class="themed theme-dark">
+  <div style="margin-bottom:6px;"><span class="state-chip n">③ 风门 0–10 档 · 常规态</span></div>
+  <div class="card">
+    <div class="gear damp"><div class="num"><b>6</b><small>档 /10</small></div><div class="segs" style="cursor:default">${gearSegs('damp',6)}</div></div>
+    <div class="note">10 段等宽档位条：已选段青色填充发光；大数字框显示当前档；点段直达、±逐档。</div>
+  </div>
+  <div style="margin:10px 0 6px;"><span class="state-chip n">④ 电机转速 0–10 档 · 常规态</span></div>
+  <div class="card">
+    <div class="gear spd"><div class="num"><b>5</b><small>档 /10</small></div><div class="segs" style="cursor:default">${gearSegs('spd',5)}</div></div>
+    <div class="note">与风门同构（紫色区分），副标显示 rpm 换算，保持操作一致性。</div>
+  </div>
+</div>
+<div class="themed theme-light">
+  <div style="margin-bottom:6px;"><span class="state-chip a">⑤ 程序自动接管态（浅色示例）</span></div>
+  <div class="card panel-auto">
+    <div class="gas-lcd"><div><span class="v">22.0</span><span class="u">mbar</span></div><div class="side">来源 <b style="color:var(--brand)">配方曲线</b></div></div>
+    <div class="gas-track"><div class="rail"></div><div class="warnzone" style="left:70%;right:0"></div><div class="fill" style="width:44%;background:var(--brand)"></div><div class="knob" style="left:44%;background:var(--brand)"></div></div>
+    <div class="auto-note">📈 程序自动：压力由配方曲线接管，手动输入已挂起（切回手动模式即恢复）</div>
+    <div style="margin-top:10px;" class="gear damp"><div class="num"><b style="color:var(--brand)">7</b><small>档 /10</small></div><div class="segs" style="cursor:default">${gearSegs('brand',7)}</div></div>
+    <div class="auto-note">📈 风门同样由曲线接管（绿色档位）</div>
+  </div>
+  <div style="margin:10px 0 6px;"><span class="state-chip l">⑥ 待机锁定态（浅色示例）</span></div>
+  <div class="card panel-lock" style="opacity:.75;">
+    <div class="gas-lcd"><div><span class="v">0.0</span><span class="u">mbar</span></div><div class="side">电磁阀 <b>关</b></div></div>
+    <div class="gas-track" style="opacity:.5"><div class="rail"></div></div>
+    <div class="lock-note">⏻ 待机锁定：燃气阀关闭、电机停转、风门 10 档通风位；解除待机后恢复调节</div>
+  </div>
+</div>`;
+</script>
+</body>
+</html>
