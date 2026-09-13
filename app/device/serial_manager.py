@@ -325,7 +325,9 @@ class SerialManager(QtCore.QObject):
         ack_text = acknowledgement.decode("utf-8", errors="replace").strip()
         if ack_text:
             self.raw_received.emit(ack_text)
-        if not ack_text.startswith("#") or not acknowledgement.endswith((b"\n", b"\r")):
+        # Verified Model S firmware can select channels without replying.
+        # Silence is not an error; an explicit malformed reply still is.
+        if acknowledgement and (not ack_text.startswith("#") or not acknowledgement.endswith((b"\n", b"\r"))):
             self._record_parse_error(ack_text, "HB Model S CHAN 命令未返回完整确认")
             return None
         self._serial.reset_input_buffer()

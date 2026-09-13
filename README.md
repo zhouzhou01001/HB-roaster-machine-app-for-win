@@ -4,6 +4,8 @@
 
 2026-09-12 锅次恢复版全量测试 245/245 通过，EXE 已通过离屏主界面就绪及持续启动检查；未完成真实设备连续两锅验收。这是发布前的本地测试结果，不代表 GitHub CI 已运行。此前整改记录见 [Superpowers 审查整改记录](docs/Superpowers审查整改记录-2026-09-12.md)。
 
+2026-09-13 已修复 Model S 不返回 CHAN 确认时无法采集的问题：全量测试 247/247 通过，短时真机读取取得 6 组有效采样且无解析错误。修复版 EXE 已通过启动检查。详见 [Model S 采集修复记录](docs/Model-S采集修复-2026-09-13.md)。
+
 ## 开源许可
 
 本项目原创代码采用 GNU Affero General Public License version 3（SPDX: `AGPL-3.0-only`），完整条款见 [LICENSE](LICENSE)。程序不提供任何担保，详见许可证。第三方依赖保留其各自许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

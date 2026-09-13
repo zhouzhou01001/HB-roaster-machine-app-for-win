@@ -42,7 +42,7 @@ class ReviewDeviceRegressions(unittest.TestCase):
                              [b"CHAN;1200\n", b"READ\n", b"CHAN;3400\n"])
 
     def test_chan_failure_never_reads_or_emits_a_sample(self):
-        for ack in (b"", b"ERROR\n", b"\n", b"#OK"):
+        for ack in (b"ERROR\n", b"\n", b"#OK"):
             with self.subTest(ack=ack), patch("app.device.serial_manager.time.sleep"):
                 manager = SerialManager()
                 manager._profile = "HB_MODEL_S"
@@ -55,6 +55,41 @@ class ReviewDeviceRegressions(unittest.TestCase):
                 self.assertEqual(manager.valid_frame_count, 0)
                 self.assertEqual(manager.parse_error_count, 1)
                 manager._serial.write.assert_called_once_with(b"CHAN;1200\n")
+
+    def test_model_s_silent_chan_reads_verified_device_frames(self):
+        with patch("app.device.serial_manager.time.sleep"):
+            manager = SerialManager()
+            manager._profile = "HB_MODEL_S"
+            manager._serial = Mock()
+            manager._serial.readline.side_effect = [
+                b"", b"27.0,30.0,29.4,C\r\n",
+                b"", b"27.0,29.8,0.0,C\r\n",
+            ]
+            samples = []
+            manager.sample_received.connect(samples.append)
+            manager._read_model_s_sample()
+            self.assertEqual(len(samples), 1)
+            self.assertEqual(manager.parse_error_count, 0)
+            self.assertEqual(samples[0]["BT_RAW"], 29.8)
+            self.assertEqual(samples[0]["IT_RAW"], 29.4)
+            self.assertEqual(samples[0]["ET_RAW"], 0.0)
+            self.assertEqual(samples[0]["CH4"], 30.0)
+            self.assertEqual([call.args[0] for call in manager._serial.write.call_args_list],
+                             [b"CHAN;1200\n", b"READ\n", b"CHAN;3400\n", b"READ\n"])
+
+    def test_model_s_silent_chan_still_requires_two_valid_read_frames(self):
+        for second in (b"", b"27,29", b"ERROR\n", b"27,nan,0,C\n"):
+            with self.subTest(second=second), patch("app.device.serial_manager.time.sleep"):
+                manager = SerialManager()
+                manager._profile = "HB_MODEL_S"
+                manager._serial = Mock()
+                manager._serial.readline.side_effect = [b"", b"27,30,29,C\n", b"", second]
+                samples = []
+                manager.sample_received.connect(samples.append)
+                manager._read_model_s_sample()
+                self.assertEqual(samples, [])
+                self.assertEqual(manager.valid_frame_count, 0)
+                self.assertEqual(manager.parse_error_count, 1)
 
     def test_model_s_confirmed_physical_order_is_preserved(self):
         with patch("app.device.serial_manager.time.sleep"):
