@@ -7,7 +7,7 @@ python -m pytest -q
 python scripts/run_release_tests.py
 ```
 
-当前源码版本为 `1.0`。测试结论以本次生成的 `release/evidence/test-report-1.0.json` 为准。pytest 同时收集 TestCase 和顶层测试函数；旧版 unittest 的通过数量不代表全部测试。历史 EXE 冒烟记录不能证明新源码构建的 EXE。
+当前源码版本为 `1.0.1`。测试结论以本次生成的 `release/evidence/test-report-1.0.1.json` 为准。pytest 同时收集 TestCase 和顶层测试函数；旧版 unittest 的通过数量不代表全部测试。历史 EXE 冒烟记录不能证明新源码构建的 EXE。
 
 覆盖范围：
 

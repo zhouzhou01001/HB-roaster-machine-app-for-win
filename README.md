@@ -1,6 +1,6 @@
 # 周周 ROAST 烘焙软件
 
-当前源码版本：`1.0`。已完成锅次恢复和 Qt 启动修复，并生成本地 EXE 交付包；公开仓库不包含本地二进制交付包。
+当前源码版本：`1.0.1`。本版修复 CH340 连接的 HB Model S 温度回传失败问题。程序下载见 GitHub Releases，源码仓库不直接存放二进制交付包。
 
 2026-09-12 锅次恢复版全量测试 245/245 通过，EXE 已通过离屏主界面就绪及持续启动检查；未完成真实设备连续两锅验收。这是发布前的本地测试结果，不代表 GitHub CI 已运行。此前整改记录见 [Superpowers 审查整改记录](docs/Superpowers审查整改记录-2026-09-12.md)。
 
@@ -51,7 +51,7 @@ python -m pytest -q
 python scripts/run_release_tests.py
 ```
 
-以本次源码运行生成的 `release/evidence/test-report-1.0.json` 为准；历史版本的通过报告不能证明当前源码。详细范围见 [TESTING.md](TESTING.md)。
+以本次源码运行生成的 `release/evidence/test-report-1.0.1.json` 为准；历史版本的通过报告不能证明当前源码。详细范围见 [TESTING.md](TESTING.md)。
 
 ## 构建 EXE
 
@@ -60,7 +60,7 @@ python -m pip install -r requirements-build.txt -r requirements-dev.txt
 python scripts/build_exe.py --smoke-exe
 ```
 
-产物由 `app/version.py` 决定，当前目标为 `dist/烘焙软件-1.0.exe`。
+产物由 `app/version.py` 决定，当前目标为 `dist/烘焙软件-1.0.1.exe`。
 
 构建前会运行完整测试；`--check-only` 仅检查依赖、版本模板和完整测试。版本资源由 `version_info.txt` 模板生成到独立构建目录。
 
@@ -72,9 +72,9 @@ python scripts/assemble_delivery.py
 
 产物：
 
-- `release/烘焙软件-1.0-完整交付包/`
-- `release/烘焙软件-1.0-完整交付包.zip`
-- `release/烘焙软件-1.0-完整交付包.zip.sha256`
+- `release/烘焙软件-1.0.1-完整交付包/`
+- `release/烘焙软件-1.0.1-完整交付包.zip`
+- `release/烘焙软件-1.0.1-完整交付包.zip.sha256`
 
 以上为构建目标，不代表产物已经生成。组装必须具备对应版本文档、当前源码测试报告和当前 EXE 启动证据。
 
